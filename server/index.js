@@ -15,6 +15,10 @@ const productsData = require("./data/products.json");
 app.use(express.json());
 app.use(cors({ origin: CLIENT_APP_URL, optionsSuccessStatus: 200 }));
 
+app.get("/", (req, res) => {
+  res.json({ ok: true, message: "TGCart backend. Use Mini App in Telegram." });
+});
+
 app.get("/products/categories", (req, res) => {
   try {
     return res.json(productsData.categories);
