@@ -1,0 +1,75 @@
+{
+  "products": [
+    {
+      "id": 1,
+      "title": "Essence Mascara Lash Princess",
+      "description": "The Essence Mascara Lash Princess is a popular mascara known for its volumizing and lengthening effects.",
+      "category": "beauty",
+      "price": 9.99,
+      "discountPercentage": 10.48,
+      "thumbnail": "https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp",
+      "images": ["https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/1.webp"]
+    },
+    {
+      "id": 2,
+      "title": "Eyeshadow Palette with Mirror",
+      "description": "The Eyeshadow Palette with Mirror offers a versatile range of eyeshadow shades for creating stunning eye looks.",
+      "category": "beauty",
+      "price": 19.99,
+      "discountPercentage": 18.19,
+      "thumbnail": "https://cdn.dummyjson.com/product-images/beauty/eyeshadow-palette-with-mirror/thumbnail.webp",
+      "images": ["https://cdn.dummyjson.com/product-images/beauty/eyeshadow-palette-with-mirror/1.webp"]
+    },
+    {
+      "id": 3,
+      "title": "Powder Canister",
+      "description": "The Powder Canister is a finely milled setting powder designed to set makeup and control shine.",
+      "category": "beauty",
+      "price": 14.99,
+      "discountPercentage": 9.84,
+      "thumbnail": "https://cdn.dummyjson.com/product-images/beauty/powder-canister/thumbnail.webp",
+      "images": ["https://cdn.dummyjson.com/product-images/beauty/powder-canister/1.webp"]
+    },
+    {
+      "id": 4,
+      "title": "Wireless Bluetooth Headphones",
+      "description": "High-quality wireless headphones with noise cancellation and 20-hour battery life.",
+      "category": "electronics",
+      "price": 79.99,
+      "discountPercentage": 15,
+      "thumbnail": "https://cdn.dummyjson.com/product-images/electronics/headphones/thumbnail.webp",
+      "images": ["https://cdn.dummyjson.com/product-images/electronics/headphones/1.webp"]
+    },
+    {
+      "id": 5,
+      "title": "Smart Watch Pro",
+      "description": "Feature-rich smartwatch with health monitoring and GPS tracking.",
+      "category": "electronics",
+      "price": 149.99,
+      "discountPercentage": 12,
+      "thumbnail": "https://cdn.dummyjson.com/product-images/electronics/smartwatch/thumbnail.webp",
+      "images": ["https://cdn.dummyjson.com/product-images/electronics/smartwatch/1.webp"]
+    },
+    {
+      "id": 6,
+      "title": "Classic Cotton T-Shirt",
+      "description": "Comfortable 100% cotton t-shirt, perfect for everyday wear.",
+      "category": "clothing",
+      "price": 24.99,
+      "discountPercentage": 8,
+      "thumbnail": "https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/thumbnail.webp",
+      "images": ["https://cdn.dummyjson.com/product-images/beauty/essence-mascara-lash-princess/1.webp"]
+    },
+    {
+      "id": 7,
+      "title": "Leather Wallet",
+      "description": "Premium leather wallet with RFID protection and multiple card slots.",
+      "category": "accessories",
+      "price": 49.99,
+      "discountPercentage": 10,
+      "thumbnail": "https://cdn.dummyjson.com/product-images/beauty/eyeshadow-palette-with-mirror/thumbnail.webp",
+      "images": ["https://cdn.dummyjson.com/product-images/beauty/eyeshadow-palette-with-mirror/1.webp"]
+    }
+  ],
+  "categories": ["all", "beauty", "electronics", "clothing", "accessories"]
+}

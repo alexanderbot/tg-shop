@@ -10,13 +10,17 @@ export default function Checkout({ product, count }) {
   useEffect(() => {
     onMainButtonClick(async () => {
       Telegram.WebApp.HapticFeedback.impactOccurred("heavy");
+      const amount = parseFloat((getFinalPrice(product) * count).toFixed(2));
       const body = {
         title: product.title,
         description: product.description,
-        amount: parseInt((getFinalPrice(product) * count).toFixed(2)),
+        amount,
+        payload: JSON.stringify({ productId: product.id, count, title: product.title }),
       };
       const data = await getInvoiceLink({ body });
-      Telegram.WebApp.openInvoice(data.url);
+      if (data.success && data.url) {
+        Telegram.WebApp.openInvoice(data.url);
+      }
     });
   }, []);
 

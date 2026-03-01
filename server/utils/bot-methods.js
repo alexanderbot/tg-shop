@@ -35,7 +35,18 @@ const sendMessage = async ({ body }) => {
   return data;
 };
 
+const answerPreCheckoutQuery = async ({ pre_checkout_query_id, ok, error_message }) => {
+  const body = { pre_checkout_query_id, ok };
+  if (!ok && error_message) body.error_message = error_message;
+  const data = await postFetch({
+    url: `${BOT_API_URL}/answerPreCheckoutQuery`,
+    body,
+  });
+  return data;
+};
+
 module.exports = {
   createInvoiceLink,
   sendMessage,
+  answerPreCheckoutQuery,
 };

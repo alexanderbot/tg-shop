@@ -24,7 +24,6 @@ export default function Products() {
 
   return (
     <div className="px-2 fadeIn">
-      {import.meta.env.REACT_APP_BACKEND_URL}
       <Categories
         items={categories}
         active={activeCategory}
