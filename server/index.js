@@ -12,8 +12,24 @@ const app = express();
 
 const productsData = require("./data/products.json");
 
+// Normalize URL for comparison (no trailing slash)
+const allowedOrigin = CLIENT_APP_URL ? CLIENT_APP_URL.replace(/\/$/, "") : null;
+
 app.use(express.json());
-app.use(cors({ origin: CLIENT_APP_URL, optionsSuccessStatus: 200 }));
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      const normalized = origin.replace(/\/$/, "");
+      if (allowedOrigin && (normalized === allowedOrigin || origin === allowedOrigin)) {
+        return cb(null, true);
+      }
+      if (allowedOrigin) return cb(null, false);
+      cb(null, true); // allow any when CLIENT_APP_URL not set (e.g. local dev)
+    },
+    optionsSuccessStatus: 200,
+  })
+);
 
 app.get("/", (req, res) => {
   res.json({ ok: true, message: "TGCart backend. Use Mini App in Telegram." });

@@ -27,7 +27,7 @@ export default function Products() {
       <div className="p-4">
         <p className="text-red-500 font-medium">Error: {error}</p>
         <p className="text-sm mt-2 text-[var(--tg-theme-hint-color)]">
-          Set VITE_APP_BACKEND_URL in Vercel (client project) to your server URL, then redeploy.
+          Client: set VITE_APP_BACKEND_URL to server URL. Server: set CLIENT_APP_URL to this app URL (no trailing slash). Then redeploy both.
         </p>
       </div>
     );
