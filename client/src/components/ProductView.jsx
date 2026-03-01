@@ -6,21 +6,26 @@ import Checkout from "./Checkout";
 
 const initialState = {
   isLoading: true,
-  product: {},
+  product: null,
   count: 1,
   showCheckout: false,
+  error: null,
 };
 
 export default function ProductView() {
   const { productId } = useParams();
   const [state, setState] = useState(initialState);
-  const { isLoading, product, count, showCheckout } = state;
+  const { isLoading, product, count, showCheckout, error } = state;
   const navigate = useNavigate();
 
   useEffect(() => {
-    getProduct(productId).then((res) => {
-      setState((prev) => ({ ...prev, product: res, isLoading: false }));
-    });
+    getProduct(productId)
+      .then((res) => {
+        setState((prev) => ({ ...prev, product: res, isLoading: false, error: null }));
+      })
+      .catch((err) => {
+        setState((prev) => ({ ...prev, isLoading: false, error: err.message || "Failed to load" }));
+      });
     Telegram.WebApp.BackButton.onClick(() => {
       setState((prev) => {
         Telegram.WebApp.MainButton.hide();
@@ -54,14 +59,23 @@ export default function ProductView() {
     Telegram.WebApp.HapticFeedback.impactOccurred("medium");
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
-      <div className="fadeIn h-screen w-screen flex items-center justify-center">
+      <div className="fadeIn h-screen w-screen flex items-center justify-center bg-[var(--tg-theme-bg-color)]">
         <span className="block animate-pulse material-symbols-outlined text-[var(--tg-theme-hint-color)] text-6xl">
           shopping_bag
         </span>
       </div>
     );
+  }
+
+  if (error || !product) {
+    return (
+      <div className="p-4">
+        <p className="text-red-500">{error || "Product not found"}</p>
+      </div>
+    );
+  }
 
   if (showCheckout) {
     return <Checkout product={product} count={count} />;

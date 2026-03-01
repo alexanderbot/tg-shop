@@ -5,7 +5,7 @@ import "./products-style.css";
 import getFinalPrice from "../utils/getFinalPrice";
 
 export default function Products() {
-  const { activeCategory, products, categories, setCategory } =
+  const { activeCategory, products, categories, setCategory, error } =
     useProducts();
 
   const navigate = useNavigate();
@@ -21,6 +21,17 @@ export default function Products() {
     Telegram?.WebApp.HapticFeedback.impactOccurred("medium");
     Telegram.WebApp.BackButton.show();
   };
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <p className="text-red-500 font-medium">Error: {error}</p>
+        <p className="text-sm mt-2 text-[var(--tg-theme-hint-color)]">
+          Set VITE_APP_BACKEND_URL in Vercel (client project) to your server URL, then redeploy.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="px-2 fadeIn">
