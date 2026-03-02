@@ -4,13 +4,13 @@ import { onMainButtonClick } from "../API/app-events";
 import { getInvoiceLink } from "../API/payment";
 
 export default function Checkout({ product, count }) {
-  const price = (getFinalPrice(product) * count).toFixed(2);
+  const price = getFinalPrice(product, count);
   const savedAmount = (product.price * count - price).toFixed(2);
 
   useEffect(() => {
-    onMainButtonClick(async () => {
+    const handleMainButtonClick = async () => {
       Telegram.WebApp.HapticFeedback.impactOccurred("heavy");
-      const amount = parseFloat((getFinalPrice(product) * count).toFixed(2));
+      const amount = parseFloat(getFinalPrice(product, count));
       const body = {
         title: product.title,
         description: product.description,
@@ -21,8 +21,14 @@ export default function Checkout({ product, count }) {
       if (data.success && data.url) {
         Telegram.WebApp.openInvoice(data.url);
       }
-    });
-  }, []);
+    };
+
+    onMainButtonClick(handleMainButtonClick);
+
+    return () => {
+      Telegram.WebApp.offEvent("mainButtonClicked", handleMainButtonClick);
+    };
+  }, [product, count]);
 
   return (
     <section className="p-4 gap-4 text-center">
@@ -38,7 +44,7 @@ export default function Checkout({ product, count }) {
 
       <div className="my-2">
         <span className="font-medium">
-          $ {(getFinalPrice(product) * count).toFixed(2)}
+          $ {getFinalPrice(product, count)}
         </span>
         {savedAmount && (
           <div className="text-[var(--tg-theme-button-color)] text-xs p-1">

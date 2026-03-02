@@ -26,7 +26,10 @@ export default function ProductView() {
       .catch((err) => {
         setState((prev) => ({ ...prev, isLoading: false, error: err.message || "Failed to load" }));
       });
-    Telegram.WebApp.BackButton.onClick(() => {
+  }, [productId]);
+
+  useEffect(() => {
+    const handleBackButton = () => {
       setState((prev) => {
         Telegram.WebApp.MainButton.hide();
 
@@ -38,10 +41,15 @@ export default function ProductView() {
         }
         return prev;
       });
-    });
-  }, []);
+    };
 
-  const images = product.images;
+    Telegram.WebApp.BackButton.onClick(handleBackButton);
+    Telegram.WebApp.BackButton.show();
+
+    return () => {
+      Telegram.WebApp.BackButton.offClick(handleBackButton);
+    };
+  }, [navigate, showCheckout]);
 
   const addToCount = (value = 1) => {
     setState((prev) => ({
@@ -88,23 +96,24 @@ export default function ProductView() {
         aria-label="Gallery"
       >
         <ol className="carousel__viewport overflow-hidden">
-          {product.images.map((image, index) => (
+          {Array.isArray(product.images) && product.images.map((image, index) => (
             <li
+              key={index}
               id={`carousel__slide${index + 1}`}
-              tabindex="0"
+              tabIndex="0"
               style={{ background: `url(${image})` }}
               className="carousel__slide"
             >
               <div className="carousel__snapper"></div>
               <a
-                href={`#carousel__slide${index < 1 ? images.length : index}`}
+                href={`#carousel__slide${index < 1 ? product.images.length : index}`}
                 className="carousel__prev"
               >
                 Go to previous slide
               </a>
               <a
                 href={`#carousel__slide${
-                  index + 2 > images.length ? 1 : index + 2
+                  index + 2 > product.images.length ? 1 : index + 2
                 }`}
                 className="carousel__next"
               >
@@ -136,8 +145,9 @@ export default function ProductView() {
           </button>
           <input
             type="number"
-            className="focus:outline-none text-center w-full bg-[var(--tg-theme-secondary-bg-color)] font-semibold text-md  md:text-basecursor-default flex items-cente  outline-none"
+            className="focus:outline-none text-center w-full bg-[var(--tg-theme-secondary-bg-color)] font-semibold text-md md:text-base cursor-default flex items-center outline-none"
             value={count}
+            readOnly
           />
           <button
             onClick={() => addToCount(1)}
