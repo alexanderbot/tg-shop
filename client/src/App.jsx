@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./context/CartContext";
+import { OrdersProvider } from "./context/OrdersContext";
 import CatalogPage from "./components/CatalogPage";
 import ProductPage from "./components/ProductPage";
 import CartPage from "./components/CartPage";
+import OrdersPage from "./components/OrdersPage";
 import BottomNav from "./components/BottomNav";
 import "./index.css";
 
@@ -37,17 +39,20 @@ export function App() {
   tg.expand();
 
   return (
-    <CartProvider>
-      <BrowserRouter>
-        <div className="min-h-screen bg-[var(--tg-theme-bg-color)]">
-          <Routes>
-            <Route path="/" element={<CatalogPage />} />
-            <Route path="/product/:productId" element={<ProductPage />} />
-            <Route path="/cart" element={<CartPage />} />
-          </Routes>
-          <BottomNav />
-        </div>
-      </BrowserRouter>
-    </CartProvider>
+    <OrdersProvider>
+      <CartProvider>
+        <BrowserRouter>
+          <div className="min-h-screen bg-[var(--tg-theme-bg-color)]">
+            <Routes>
+              <Route path="/" element={<CatalogPage />} />
+              <Route path="/product/:productId" element={<ProductPage />} />
+              <Route path="/cart" element={<CartPage />} />
+              <Route path="/orders" element={<OrdersPage />} />
+            </Routes>
+            <BottomNav />
+          </div>
+        </BrowserRouter>
+      </CartProvider>
+    </OrdersProvider>
   );
 }

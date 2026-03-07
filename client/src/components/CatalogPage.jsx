@@ -10,6 +10,8 @@ export default function CatalogPage() {
   const navigate = useNavigate();
   const [priceRange, setPriceRange] = useState({ min: 0, max: Infinity });
 
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+
   const filteredProducts = useMemo(() => {
     if (priceRange.min === 0 && priceRange.max === Infinity) return products;
     return products.filter((p) => {
@@ -36,13 +38,35 @@ export default function CatalogPage() {
 
   return (
     <div className="pb-nav">
-      <div className="px-4 pt-4 pb-1">
-        <h1 className="text-[22px] font-extrabold animate-fade-in-up">
-          Каталог
-        </h1>
-        <p className="text-[13px] text-[var(--tg-theme-hint-color,#999)] mt-0.5 animate-fade-in-up stagger-1">
-          Воздушные шары для любого праздника
-        </p>
+      <div className="px-4 pt-4 pb-1 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-[22px] font-extrabold animate-fade-in-up">
+            Каталог
+          </h1>
+          <p className="text-[13px] text-[var(--tg-theme-hint-color,#999)] mt-0.5 animate-fade-in-up stagger-1">
+            Воздушные шары для любого праздника
+          </p>
+        </div>
+        {tgUser && (
+          <div className="flex flex-col items-center gap-0.5 animate-fade-in-up shrink-0">
+            {tgUser.photo_url ? (
+              <img
+                src={tgUser.photo_url}
+                alt={tgUser.first_name}
+                className="w-10 h-10 rounded-full object-cover ring-2 ring-[var(--tg-theme-button-color,#f472b6)] ring-offset-1 ring-offset-[var(--tg-theme-bg-color,#fff)]"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-[16px] ring-2 ring-[var(--tg-theme-button-color,#f472b6)] ring-offset-1 ring-offset-[var(--tg-theme-bg-color,#fff)]"
+                style={{ background: "var(--tg-theme-button-color,#f472b6)" }}
+              >
+                {(tgUser.first_name?.[0] || "?").toUpperCase()}
+              </div>
+            )}
+            <span className="text-[10px] text-[var(--tg-theme-hint-color,#999)] font-medium max-w-[56px] truncate leading-tight">
+              {tgUser.first_name}
+            </span>
+          </div>
+        )}
       </div>
 
       <FilterPanel

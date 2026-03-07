@@ -3,6 +3,7 @@ import { useCart } from "../context/CartContext";
 
 const tabs = [
   { path: "/", icon: "grid_view", label: "Каталог" },
+  { path: "/orders", icon: "receipt_long", label: "Заказы" },
   { path: "/cart", icon: "shopping_cart", label: "Корзина" },
 ];
 

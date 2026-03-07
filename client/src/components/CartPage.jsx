@@ -1,12 +1,15 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
+import { useOrders } from "../context/OrdersContext";
 import { getInvoiceLink } from "../API/payment";
 import getFinalPrice from "../utils/getFinalPrice";
 
 export default function CartPage() {
   const { items, updateQuantity, removeFromCart, clearCart, totalPrice } = useCart();
+  const { addOrder, markOrderPaid, markOrderFailed } = useOrders();
   const navigate = useNavigate();
+  const pendingOrderId = useRef(null);
 
   const handlePay = useCallback(async () => {
     if (items.length === 0) return;
@@ -15,16 +18,20 @@ export default function CartPage() {
     const cartItems = items.map((i) => ({
       productId: i.product.id,
       title: i.product.title,
+      thumbnail: i.product.thumbnail,
       quantity: i.quantity,
       price: parseFloat(getFinalPrice(i.product, 1)),
     }));
+
+    const order = addOrder({ items: cartItems, totalPrice, status: "pending" });
+    pendingOrderId.current = order.id;
 
     const body = {
       title: "Заказ из магазина",
       description: cartItems.map((c) => `${c.title} x${c.quantity}`).join(", "),
       items: cartItems,
       amount: Math.round(totalPrice * 100) / 100,
-      payload: JSON.stringify({ items: cartItems }),
+      payload: JSON.stringify({ orderId: order.id, items: cartItems }),
     };
 
     try {
@@ -32,15 +39,24 @@ export default function CartPage() {
       if (data.success && data.url) {
         window.Telegram?.WebApp?.openInvoice(data.url, (status) => {
           if (status === "paid") {
+            if (pendingOrderId.current) markOrderPaid(pendingOrderId.current);
             clearCart();
             window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+          } else if (status === "cancelled" || status === "failed") {
+            if (pendingOrderId.current) markOrderFailed(pendingOrderId.current);
           }
+          pendingOrderId.current = null;
         });
+      } else {
+        markOrderFailed(order.id);
+        pendingOrderId.current = null;
       }
     } catch (err) {
       console.error("Payment error:", err);
+      if (pendingOrderId.current) markOrderFailed(pendingOrderId.current);
+      pendingOrderId.current = null;
     }
-  }, [items, totalPrice, clearCart]);
+  }, [items, totalPrice, clearCart, addOrder, markOrderPaid, markOrderFailed]);
 
   useEffect(() => {
     if (items.length > 0) {
