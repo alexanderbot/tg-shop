@@ -46,7 +46,7 @@ app.get("/products/categories", (req, res) => {
 
 app.get("/products", (req, res) => {
   try {
-    const { category, limit = 20 } = req.query;
+    const { category, limit = 200, minPrice, maxPrice } = req.query;
     let products = [...productsData.products];
 
     if (category && category !== "all") {
@@ -55,8 +55,24 @@ app.get("/products", (req, res) => {
       );
     }
 
+    if (minPrice) {
+      const min = parseFloat(minPrice);
+      products = products.filter((p) => {
+        const finalPrice = p.price - (p.price / 100) * p.discountPercentage;
+        return finalPrice >= min;
+      });
+    }
+
+    if (maxPrice) {
+      const max = parseFloat(maxPrice);
+      products = products.filter((p) => {
+        const finalPrice = p.price - (p.price / 100) * p.discountPercentage;
+        return finalPrice <= max;
+      });
+    }
+
     products = products.slice(0, parseInt(limit, 10));
-    return res.json({ products, total: productsData.products.length });
+    return res.json({ products, total: products.length });
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Failed to fetch products" });
@@ -85,24 +101,31 @@ app.post("/invoice-link", async (req, res) => {
       return res.status(401).json({ success: false, error: "Invalid init data" });
     }
 
+    let prices;
+    if (Array.isArray(reqBody.items) && reqBody.items.length > 0) {
+      prices = reqBody.items.map((item) => ({
+        label: `${item.title} x${item.quantity}`,
+        amount: Math.round(item.price * item.quantity * 100),
+      }));
+    } else {
+      prices = [
+        {
+          label: reqBody.title || "Итого",
+          amount: Math.round(reqBody.amount * 100),
+        },
+      ];
+    }
+
     const body = {
-      title: reqBody.title,
-      description: reqBody.description,
+      title: reqBody.title || "Заказ",
+      description: reqBody.description || "Оплата заказа",
       payload: reqBody.payload || "data",
       provider_token: PAYMENT_TOKEN,
-      currency: "USD",
-      prices: [
-        {
-          label: "Total Amount",
-          /** `amount` needs to be multiplied by 100, refer: https://core.telegram.org/bots/api#labeledprice */
-          amount: reqBody.amount * 100,
-        },
-      ],
+      currency: "RUB",
+      prices,
     };
 
     const data = await createInvoiceLink({ body });
-
-    console.log({ data });
 
     return res.json({ success: !!data.result, url: data.result });
   } catch (err) {
@@ -133,9 +156,9 @@ app.post("/", async (req, res) => {
 
       if (successful_payment) {
         const thankYouText =
-          `Thank you for your purchase!\n\n` +
-          `Order: ${successful_payment.invoice_payload}\n` +
-          `Amount: $${(successful_payment.total_amount / 100).toFixed(2)} ${successful_payment.currency}`;
+          `Спасибо за покупку! 🎉\n\n` +
+          `Заказ: ${successful_payment.invoice_payload}\n` +
+          `Сумма: ${(successful_payment.total_amount / 100).toFixed(0)} ₽`;
         await sendMessage({
           body: {
             chat_id: chat.id,
@@ -153,7 +176,7 @@ app.post("/", async (req, res) => {
           inline_keyboard: [
             [
               {
-                text: "BUY NOW",
+                text: "🛒 Открыть магазин",
                 web_app: {
                   url: CLIENT_APP_URL,
                 },

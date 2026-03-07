@@ -1,7 +1,8 @@
-const getWelcomeMessage = ({ name }) => `Hi ${name} 👋
+const getWelcomeMessage = ({ name }) => `Привет, ${name}! 👋
 
-Upgrade your lifestyle with the click of a button! Shop the latest in fashion and cutting-edge electronics now. 
-Click BUY NOW and embrace the future today! 🛒💫📱👗`;
+Воздушные шары для любого праздника — дни рождения, выписки, корпоративы и многое другое! 🎈✨
+
+Нажми кнопку ниже, чтобы открыть каталог 🛒`;
 
 module.exports = {
   getWelcomeMessage,

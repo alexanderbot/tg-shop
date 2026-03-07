@@ -23,7 +23,7 @@ const useProducts = () => {
   }, []);
 
   useEffect(() => {
-    getProducts({ category: activeCategory, limit: 20 })
+    getProducts({ category: activeCategory, limit: 200 })
       .then((result) => {
         setState((prev) => ({ ...prev, products: result?.products || [], error: null }));
       })
