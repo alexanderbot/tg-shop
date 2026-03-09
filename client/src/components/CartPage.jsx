@@ -13,6 +13,10 @@ export default function CartPage() {
 
   const handlePay = useCallback(async () => {
     if (items.length === 0) return;
+    if (pendingOrderId.current) return;
+
+    window.Telegram?.WebApp?.MainButton?.showProgress?.(false);
+    window.Telegram?.WebApp?.MainButton?.disable?.();
     window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("heavy");
 
     const cartItems = items.map((i) => ({
@@ -23,20 +27,25 @@ export default function CartPage() {
       price: parseFloat(getFinalPrice(i.product, 1)),
     }));
 
-    const order = addOrder({ items: cartItems, totalPrice, status: "pending" });
-    pendingOrderId.current = order.id;
-
+    const tempId = Date.now();
     const body = {
       title: "Заказ из магазина",
       description: cartItems.map((c) => `${c.title} x${c.quantity}`).join(", "),
       items: cartItems,
       amount: Math.round(totalPrice * 100) / 100,
-      payload: JSON.stringify({ orderId: order.id, items: cartItems }),
+      payload: JSON.stringify({ orderId: tempId, items: cartItems }),
     };
 
     try {
       const data = await getInvoiceLink({ body });
+
+      window.Telegram?.WebApp?.MainButton?.hideProgress?.();
+      window.Telegram?.WebApp?.MainButton?.enable?.();
+
       if (data.success && data.url) {
+        const order = addOrder({ items: cartItems, totalPrice, status: "pending" });
+        pendingOrderId.current = order.id;
+
         window.Telegram?.WebApp?.openInvoice(data.url, (status) => {
           if (status === "paid") {
             if (pendingOrderId.current) markOrderPaid(pendingOrderId.current);
@@ -48,12 +57,20 @@ export default function CartPage() {
           pendingOrderId.current = null;
         });
       } else {
-        markOrderFailed(order.id);
-        pendingOrderId.current = null;
+        console.error("Invoice link failed:", data);
+        window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+        window.Telegram?.WebApp?.showAlert?.(
+          "Не удалось создать платёж. Попробуйте ещё раз."
+        );
       }
     } catch (err) {
       console.error("Payment error:", err);
-      if (pendingOrderId.current) markOrderFailed(pendingOrderId.current);
+      window.Telegram?.WebApp?.MainButton?.hideProgress?.();
+      window.Telegram?.WebApp?.MainButton?.enable?.();
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+      window.Telegram?.WebApp?.showAlert?.(
+        "Ошибка при оплате. Проверьте соединение и попробуйте снова."
+      );
       pendingOrderId.current = null;
     }
   }, [items, totalPrice, clearCart, addOrder, markOrderPaid, markOrderFailed]);

@@ -127,10 +127,15 @@ app.post("/invoice-link", async (req, res) => {
 
     const data = await createInvoiceLink({ body });
 
-    return res.json({ success: !!data.result, url: data.result });
+    if (!data.result) {
+      console.error("createInvoiceLink failed:", JSON.stringify(data));
+      return res.json({ success: false, error: data.description || "Invoice creation failed" });
+    }
+
+    return res.json({ success: true, url: data.result });
   } catch (err) {
-    console.error(err);
-    return res.json({ success: false });
+    console.error("invoice-link error:", err);
+    return res.json({ success: false, error: "Internal server error" });
   }
 });
 
