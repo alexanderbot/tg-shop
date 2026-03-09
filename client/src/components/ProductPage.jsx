@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getProduct } from "../API/products";
 import { useCart } from "../context/CartContext";
 import getFinalPrice from "../utils/getFinalPrice";
+import formatPrice from "../utils/formatPrice";
 
 export default function ProductPage() {
   const { productId } = useParams();
@@ -129,13 +130,11 @@ export default function ProductPage() {
         </div>
 
         <div className="flex items-baseline gap-2 mt-2">
-          <span className="text-2xl font-extrabold">
-            {Math.round(parseFloat(finalPrice)).toLocaleString("ru-RU")} ₽
-          </span>
+          <span className="text-2xl font-extrabold">{formatPrice(parseFloat(finalPrice))}</span>
           {hasDiscount && (
             <>
               <span className="text-sm text-[var(--tg-theme-hint-color,#999)] line-through">
-                {Math.round(product.price).toLocaleString("ru-RU")} ₽
+                {formatPrice(product.price)}
               </span>
               <span className="text-xs font-bold text-[#ef4444] bg-[#fef2f2] px-1.5 py-0.5 rounded">
                 -{Math.ceil(product.discountPercentage)}%

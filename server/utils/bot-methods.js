@@ -1,17 +1,46 @@
 const fetch = require("node-fetch");
 
 const getBotApiUrl = () => `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
+const TELEGRAM_TIMEOUT_MS = 8000;
+const sanitizeBody = (body) => ({
+  ...body,
+  provider_token: body?.provider_token ? "[redacted]" : body?.provider_token,
+});
 
 const postFetch = async ({ url, body }) => {
-  const response = await fetch(url, {
-    method: "POST",
-    body: JSON.stringify(body),
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-  const data = await response.json();
-  return data;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), TELEGRAM_TIMEOUT_MS);
+
+  try {
+    console.log("[TG API] request:", url, JSON.stringify(sanitizeBody(body)));
+
+    const response = await fetch(url, {
+      method: "POST",
+      body: JSON.stringify(body),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      signal: controller.signal,
+    });
+
+    const rawText = await response.text();
+    console.log("[TG API] response:", response.status, rawText);
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error(`Telegram returned non-JSON response with status ${response.status}`);
+    }
+
+    if (!response.ok || !data.ok) {
+      throw new Error(data.description || `Telegram API error with status ${response.status}`);
+    }
+
+    return data;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 };
 
 const createInvoiceLink = async ({ body }) => {

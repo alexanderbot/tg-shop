@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useOrders } from "../context/OrdersContext";
+import formatPrice from "../utils/formatPrice";
 
 const STATUS_CONFIG = {
   paid: {
@@ -36,7 +37,7 @@ function formatDate(isoString) {
 
 function OrderCard({ order }) {
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
-  const total = Math.round(order.totalPrice).toLocaleString("ru-RU");
+  const total = formatPrice(order.totalPrice);
   const itemsPreview = order.items.slice(0, 3);
   const rest = order.items.length - itemsPreview.length;
 
@@ -99,9 +100,7 @@ function OrderCard({ order }) {
               {item.title}
               <span className="text-[var(--tg-theme-hint-color,#999)] ml-1">×{item.quantity}</span>
             </span>
-            <span className="font-semibold shrink-0">
-              {Math.round(item.price * item.quantity).toLocaleString("ru-RU")} ₽
-            </span>
+            <span className="font-semibold shrink-0">{formatPrice(item.price * item.quantity)}</span>
           </div>
         ))}
       </div>
@@ -112,7 +111,7 @@ function OrderCard({ order }) {
         style={{ borderColor: "var(--tg-theme-bg-color,#eee)" }}
       >
         <span className="text-[12px] text-[var(--tg-theme-hint-color,#999)]">Итого</span>
-        <span className="text-[16px] font-extrabold">{total} ₽</span>
+        <span className="text-[16px] font-extrabold">{total}</span>
       </div>
     </div>
   );

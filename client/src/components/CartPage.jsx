@@ -4,6 +4,7 @@ import { useCart } from "../context/CartContext";
 import { useOrders } from "../context/OrdersContext";
 import { getInvoiceLink } from "../API/payment";
 import getFinalPrice from "../utils/getFinalPrice";
+import formatPrice from "../utils/formatPrice";
 
 export default function CartPage() {
   const { items, updateQuantity, removeFromCart, clearCart, totalPrice } = useCart();
@@ -79,7 +80,7 @@ export default function CartPage() {
 
   useEffect(() => {
     if (items.length > 0) {
-      const text = `Оплатить ${Math.round(totalPrice).toLocaleString("ru-RU")} ₽`;
+      const text = `Оплатить ${formatPrice(totalPrice)}`;
       window.Telegram?.WebApp?.MainButton?.setParams({
         text,
         color: window.Telegram?.WebApp?.themeParams?.button_color || "#f472b6",
@@ -155,9 +156,7 @@ export default function CartPage() {
       <div className="mx-3 mt-4 p-4 rounded-2xl bg-[var(--tg-theme-secondary-bg-color,#f9fafb)] card-shadow">
         <div className="flex justify-between items-center">
           <span className="text-sm text-[var(--tg-theme-hint-color,#999)]">Итого</span>
-          <span className="text-xl font-extrabold">
-            {Math.round(totalPrice).toLocaleString("ru-RU")} ₽
-          </span>
+          <span className="text-xl font-extrabold">{formatPrice(totalPrice)}</span>
         </div>
       </div>
     </div>
@@ -178,9 +177,7 @@ function CartItem({ item, onUpdateQty, onRemove }) {
 
       <div className="flex-1 min-w-0">
         <h3 className="text-[13px] font-semibold leading-tight line-clamp-2">{product.title}</h3>
-        <p className="text-[15px] font-extrabold mt-1">
-          {Math.round(itemTotal).toLocaleString("ru-RU")} ₽
-        </p>
+        <p className="text-[15px] font-extrabold mt-1">{formatPrice(itemTotal)}</p>
       </div>
 
       <div className="flex flex-col items-end gap-1.5 shrink-0">

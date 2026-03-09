@@ -1,5 +1,6 @@
 import { useCart } from "../context/CartContext";
 import getFinalPrice from "../utils/getFinalPrice";
+import formatPrice from "../utils/formatPrice";
 
 export default function ProductCard({ product, onClick, style }) {
   const { addToCart, getItemQty } = useCart();
@@ -59,12 +60,10 @@ export default function ProductCard({ product, onClick, style }) {
         </h3>
 
         <div className="flex items-baseline gap-1.5 mt-1.5">
-          <span className="text-[15px] font-extrabold">
-            {Math.round(parseFloat(finalPrice)).toLocaleString("ru-RU")} ₽
-          </span>
+          <span className="text-[15px] font-extrabold">{formatPrice(parseFloat(finalPrice))}</span>
           {hasDiscount && (
             <span className="text-[11px] text-[var(--tg-theme-hint-color,#999)] line-through">
-              {Math.round(product.price).toLocaleString("ru-RU")} ₽
+              {formatPrice(product.price)}
             </span>
           )}
         </div>
