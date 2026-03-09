@@ -154,14 +154,13 @@ app.post("/", async (req, res) => {
     console.log("webhook event", req.body);
     const { message, pre_checkout_query } = req.body;
 
-    // Handle pre_checkout_query - must answer within 10 seconds
     if (pre_checkout_query) {
       const { id: pre_checkout_query_id } = pre_checkout_query;
-      const response = await answerPreCheckoutQuery({
+      const pcoResult = await answerPreCheckoutQuery({
         pre_checkout_query_id,
         ok: true,
       });
-      console.log("answerPreCheckoutQuery", response);
+      console.log("answerPreCheckoutQuery:", JSON.stringify(pcoResult));
       return res.json({ success: true });
     }
 
