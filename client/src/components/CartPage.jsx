@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useOrders } from "../context/OrdersContext";
@@ -12,9 +12,52 @@ export default function CartPage() {
   const navigate = useNavigate();
   const pendingOrderId = useRef(null);
 
+  const [deliveryMethod, setDeliveryMethod] = useState("delivery");
+  const [address, setAddress] = useState("");
+  const [entrance, setEntrance] = useState("");
+  const [floor, setFloor] = useState("");
+  const [apartment, setApartment] = useState("");
+  const [deliveryDate, setDeliveryDate] = useState("");
+  const [deliveryTimeFrom, setDeliveryTimeFrom] = useState("");
+  const [deliveryTimeTo, setDeliveryTimeTo] = useState("");
+  const [isRecipientOther, setIsRecipientOther] = useState(false);
+  const [recipientName, setRecipientName] = useState("");
+  const [recipientPhone, setRecipientPhone] = useState("");
+
+  const deliveryRef = useRef(null);
+
+  const deliveryData = {
+    method: deliveryMethod,
+    ...(deliveryMethod === "delivery" && {
+      address,
+      entrance,
+      floor,
+      apartment,
+      date: deliveryDate,
+      timeFrom: deliveryTimeFrom,
+      timeTo: deliveryTimeTo,
+      recipient: isRecipientOther
+        ? { name: recipientName, phone: recipientPhone }
+        : null,
+    }),
+  };
+  deliveryRef.current = deliveryData;
+
   const handlePay = useCallback(async () => {
     if (items.length === 0) return;
     if (pendingOrderId.current) return;
+
+    const delivery = deliveryRef.current;
+    if (delivery.method === "delivery") {
+      if (!delivery.address?.trim()) {
+        window.Telegram?.WebApp?.showAlert?.("Укажите адрес доставки");
+        return;
+      }
+      if (!delivery.date) {
+        window.Telegram?.WebApp?.showAlert?.("Укажите дату доставки");
+        return;
+      }
+    }
 
     window.Telegram?.WebApp?.MainButton?.showProgress?.(false);
     window.Telegram?.WebApp?.MainButton?.disable?.();
@@ -36,6 +79,7 @@ export default function CartPage() {
       items: cartItems,
       amount: Math.round(totalPrice * 100) / 100,
       payload: String(tempId),
+      delivery,
     };
 
     try {
@@ -45,7 +89,7 @@ export default function CartPage() {
       window.Telegram?.WebApp?.MainButton?.enable?.();
 
       if (data.success && data.url) {
-        const order = addOrder({ items: cartItems, totalPrice, status: "pending" });
+        const order = addOrder({ items: cartItems, totalPrice, status: "pending", delivery });
         pendingOrderId.current = order.id;
 
         window.Telegram?.WebApp?.openInvoice(data.url, (status) => {
@@ -152,6 +196,153 @@ export default function CartPage() {
           />
         ))}
       </div>
+
+      {/* Способ получения */}
+      <div className="mx-3 mt-4 p-4 rounded-2xl bg-[var(--tg-theme-secondary-bg-color,#f9fafb)] card-shadow">
+        <h2 className="text-[15px] font-bold mb-3">Способ получения</h2>
+        <label className="flex items-center gap-3 mb-2.5 cursor-pointer">
+          <input
+            type="radio"
+            name="deliveryMethod"
+            value="delivery"
+            checked={deliveryMethod === "delivery"}
+            onChange={() => setDeliveryMethod("delivery")}
+            className="w-[18px] h-[18px] accent-[var(--tg-theme-button-color,#f472b6)]"
+          />
+          <span className="text-sm">Доставка</span>
+        </label>
+        <label className="flex items-center gap-3 cursor-pointer">
+          <input
+            type="radio"
+            name="deliveryMethod"
+            value="pickup"
+            checked={deliveryMethod === "pickup"}
+            onChange={() => setDeliveryMethod("pickup")}
+            className="w-[18px] h-[18px] accent-[var(--tg-theme-button-color,#f472b6)]"
+          />
+          <span className="text-sm">Самовывоз (Саратов, ул. Набережная, 22)</span>
+        </label>
+      </div>
+
+      {/* Поля доставки */}
+      {deliveryMethod === "delivery" && (
+        <div className="mx-3 mt-3 p-4 rounded-2xl bg-[var(--tg-theme-secondary-bg-color,#f9fafb)] card-shadow">
+          <h2 className="text-[15px] font-bold mb-3">Доставка</h2>
+
+          <div className="flex gap-3 mb-3">
+            <div className="flex-1">
+              <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
+                Дата доставки
+              </label>
+              <input
+                type="date"
+                value={deliveryDate}
+                onChange={(e) => setDeliveryDate(e.target.value)}
+                className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
+                Интервал доставки 1 час
+              </label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="time"
+                  value={deliveryTimeFrom}
+                  onChange={(e) => setDeliveryTimeFrom(e.target.value)}
+                  placeholder="с __:__"
+                  className="flex-1 p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+                />
+                <input
+                  type="time"
+                  value={deliveryTimeTo}
+                  onChange={(e) => setDeliveryTimeTo(e.target.value)}
+                  placeholder="до __:__"
+                  className="flex-1 p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mb-3">
+            <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
+              Адрес доставки
+            </label>
+            <input
+              type="text"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Введите адрес доставки"
+              className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+            />
+          </div>
+
+          <div className="flex gap-3 mb-3">
+            <div className="flex-1">
+              <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
+                Подъезд
+              </label>
+              <input
+                type="text"
+                value={entrance}
+                onChange={(e) => setEntrance(e.target.value)}
+                className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
+                Этаж
+              </label>
+              <input
+                type="text"
+                value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+                className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
+                Кв.
+              </label>
+              <input
+                type="text"
+                value={apartment}
+                onChange={(e) => setApartment(e.target.value)}
+                className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+              />
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2.5 cursor-pointer mb-1">
+            <input
+              type="checkbox"
+              checked={isRecipientOther}
+              onChange={(e) => setIsRecipientOther(e.target.checked)}
+              className="w-[18px] h-[18px] accent-[var(--tg-theme-button-color,#f472b6)]"
+            />
+            <span className="text-sm">Получатель — другой человек</span>
+          </label>
+
+          {isRecipientOther && (
+            <div className="mt-3 space-y-3">
+              <input
+                type="text"
+                value={recipientName}
+                onChange={(e) => setRecipientName(e.target.value)}
+                placeholder="Имя получателя"
+                className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+              />
+              <input
+                type="tel"
+                value={recipientPhone}
+                onChange={(e) => setRecipientPhone(e.target.value)}
+                placeholder="Телефон получателя"
+                className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+              />
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="mx-3 mt-4 p-4 rounded-2xl bg-[var(--tg-theme-secondary-bg-color,#f9fafb)] card-shadow">
         <div className="flex justify-between items-center">

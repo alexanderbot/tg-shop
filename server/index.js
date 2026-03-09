@@ -10,6 +10,17 @@ const { PORT, PAYMENT_TOKEN, CLIENT_APP_URL, BOT_TOKEN } = process.env;
 const app = express();
 
 const productsData = require("./data/products.json");
+
+// Temporary in-memory store: payload → delivery info (cleared after payment or 24h)
+const pendingDeliveries = new Map();
+const DELIVERY_TTL_MS = 24 * 60 * 60 * 1000;
+function cleanupDeliveries() {
+  const now = Date.now();
+  for (const [key, entry] of pendingDeliveries) {
+    if (now - entry.createdAt > DELIVERY_TTL_MS) pendingDeliveries.delete(key);
+  }
+}
+setInterval(cleanupDeliveries, 60 * 60 * 1000);
 const formatAmount = (amount) => new Intl.NumberFormat("ru-RU", {
   minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
   maximumFractionDigits: 2,
@@ -138,6 +149,14 @@ app.post("/invoice-link", async (req, res) => {
       prices,
     };
 
+    if (reqBody.delivery) {
+      pendingDeliveries.set(payload, {
+        delivery: reqBody.delivery,
+        items: reqBody.items || [],
+        createdAt: Date.now(),
+      });
+    }
+
     const data = await createInvoiceLink({ body });
 
     if (!data.result) {
@@ -176,10 +195,32 @@ app.post("/", async (req, res) => {
       const { chat, successful_payment } = message;
 
       if (successful_payment) {
-        const thankYouText =
+        const payloadKey = successful_payment.invoice_payload;
+        const pending = pendingDeliveries.get(payloadKey);
+        pendingDeliveries.delete(payloadKey);
+
+        let thankYouText =
           `Спасибо за покупку! 🎉\n\n` +
-          `Заказ: ${successful_payment.invoice_payload}\n` +
+          `Заказ: ${payloadKey}\n` +
           `Сумма: ${formatAmount(successful_payment.total_amount / 100)} ₽`;
+
+        if (pending?.delivery) {
+          const d = pending.delivery;
+          if (d.method === "delivery") {
+            thankYouText += `\n\n📦 Доставка`;
+            if (d.address) thankYouText += `\nАдрес: ${d.address}`;
+            if (d.entrance) thankYouText += `, подъезд ${d.entrance}`;
+            if (d.floor) thankYouText += `, этаж ${d.floor}`;
+            if (d.apartment) thankYouText += `, кв. ${d.apartment}`;
+            if (d.date) thankYouText += `\nДата: ${d.date}`;
+            if (d.timeFrom || d.timeTo) thankYouText += `\nВремя: ${d.timeFrom || "—"}–${d.timeTo || "—"}`;
+            if (d.recipient?.name) thankYouText += `\nПолучатель: ${d.recipient.name}`;
+            if (d.recipient?.phone) thankYouText += `, тел. ${d.recipient.phone}`;
+          } else {
+            thankYouText += `\n\n🏪 Самовывоз (Саратов, ул. Набережная, 22)`;
+          }
+        }
+
         await sendMessage({
           body: {
             chat_id: chat.id,

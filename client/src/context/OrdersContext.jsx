@@ -20,13 +20,14 @@ export function OrdersProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
   }, [orders]);
 
-  const addOrder = useCallback(({ items, totalPrice, status = "pending" }) => {
+  const addOrder = useCallback(({ items, totalPrice, status = "pending", delivery }) => {
     const order = {
       id: Date.now(),
       date: new Date().toISOString(),
       items,
       totalPrice,
-      status, // "paid" | "pending" | "failed"
+      status,
+      ...(delivery && { delivery }),
     };
     setOrders((prev) => [order, ...prev]);
     return order;
