@@ -6,7 +6,7 @@ const { createInvoiceLink, sendMessage, answerPreCheckoutQuery } = require("./ut
 const { validateInitData } = require("./utils/validateInitData");
 const { getWelcomeMessage } = require("./const/messages");
 
-const { PORT, PAYMENT_TOKEN, CLIENT_APP_URL, BOT_TOKEN } = process.env;
+const { PORT, PAYMENT_TOKEN, CLIENT_APP_URL, BOT_TOKEN, ADMIN_TELEGRAM_ID } = process.env;
 const app = express();
 
 const productsData = require("./data/products.json");
@@ -264,6 +264,60 @@ app.post("/", async (req, res) => {
             ...(replyMarkup && { reply_markup: replyMarkup }),
           },
         });
+
+        // Уведомление администратору о новом заказе
+        if (ADMIN_TELEGRAM_ID) {
+          const adminIds = ADMIN_TELEGRAM_ID.split(",").map((s) => s.trim()).filter(Boolean);
+          const from = message.from || {};
+          const customerName = [from.first_name, from.last_name].filter(Boolean).join(" ");
+          const customerUsername = from.username ? `@${from.username}` : "";
+          const customerTgId = from.id ? `(ID: ${from.id})` : "";
+
+          let adminText =
+            `🛒 Новый заказ\n\n` +
+            `Заказ: ${payloadKey}\n` +
+            `Сумма: ${formatAmount(successful_payment.total_amount / 100)} ₽\n\n` +
+            `👤 Покупатель: ${customerName || "—"} ${customerUsername} ${customerTgId}\n`;
+
+          if (pending?.items?.length) {
+            adminText += `\nТовары:\n`;
+            pending.items.forEach((item) => {
+              adminText += `• ${item.title} ×${item.quantity || 1} — ${formatAmount((item.price || 0) * (item.quantity || 1))} ₽\n`;
+            });
+          }
+
+          if (pending?.delivery) {
+            const d = pending.delivery;
+            adminText += `\nДоставка: `;
+            if (d.method === "delivery") {
+              adminText += `\nАдрес: ${d.address || "—"}`;
+              if (d.entrance) adminText += `, подъезд ${d.entrance}`;
+              if (d.floor) adminText += `, этаж ${d.floor}`;
+              if (d.apartment) adminText += `, кв. ${d.apartment}`;
+              if (d.date) adminText += `\nДата: ${d.date}`;
+              if (d.timeFrom || d.timeTo) adminText += `\nВремя: ${d.timeFrom || "—"}–${d.timeTo || "—"}`;
+              if (d.recipient?.name) adminText += `\nПолучатель: ${d.recipient.name}`;
+              if (d.recipient?.phone) adminText += `, тел. ${d.recipient.phone}`;
+            } else {
+              adminText += `Самовывоз`;
+            }
+          }
+
+          const adminBody = {
+            text: adminText,
+          };
+
+          for (const adminId of adminIds) {
+            try {
+              await sendMessage({
+                body: { ...adminBody, chat_id: parseInt(adminId, 10) },
+              });
+            } catch (adminErr) {
+              console.error("[Admin notify] failed for", adminId, adminErr.message);
+            }
+          }
+        }
+
         return res.json({ success: true });
       }
 

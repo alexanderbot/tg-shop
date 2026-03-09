@@ -43,6 +43,7 @@ git push origin main
    - `BOT_TOKEN` — токен бота из @BotFather
    - `PAYMENT_TOKEN` — токен платежей из BotFather
    - `CLIENT_APP_URL` — **пока оставьте пустым**, заполните после деплоя клиента (например `https://ваш-client.vercel.app`)
+   - `ADMIN_TELEGRAM_ID` — (опционально) ваш ID в Telegram; на этот аккаунт будут приходить уведомления о новых заказах. Несколько ID через запятую: `123456789,987654321`. Узнать ID можно через @userinfobot
 6. Нажмите **Deploy**.
 7. После деплоя скопируйте URL бэкенда (например `https://tg-shop-server-xxx.vercel.app`) — он понадобится для клиента и для webhook.
 
@@ -68,6 +69,7 @@ git push origin main
 
 1. **Backend**: в проекте server в Vercel откройте **Settings** → **Environment Variables** и задайте:
    - `CLIENT_APP_URL` = URL клиента (из шага 3)
+   - `ADMIN_TELEGRAM_ID` = ваш Telegram ID (если нужны уведомления о заказах)
 2. Сделайте **Redeploy** проекта server (Deployments → … → Redeploy).
 
 ---
