@@ -163,6 +163,7 @@ app.post("/invoice-link", async (req, res) => {
       provider_token: PAYMENT_TOKEN,
       currency: "RUB",
       prices,
+      need_email: true, // для отправки чеков из налоговой клиенту (54-ФЗ)
     };
 
     if (reqBody.delivery) {
