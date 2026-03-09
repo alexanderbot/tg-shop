@@ -156,11 +156,16 @@ app.post("/", async (req, res) => {
 
     if (pre_checkout_query) {
       const { id: pre_checkout_query_id } = pre_checkout_query;
-      const pcoResult = await answerPreCheckoutQuery({
-        pre_checkout_query_id,
-        ok: true,
-      });
-      console.log("answerPreCheckoutQuery:", JSON.stringify(pcoResult));
+      console.log("[PCQ] answering pre_checkout_query_id:", pre_checkout_query_id);
+      try {
+        const pcoResult = await answerPreCheckoutQuery({
+          pre_checkout_query_id,
+          ok: true,
+        });
+        console.log("[PCQ] result:", JSON.stringify(pcoResult));
+      } catch (pcoErr) {
+        console.error("[PCQ] error:", pcoErr.message || pcoErr);
+      }
       return res.json({ success: true });
     }
 
