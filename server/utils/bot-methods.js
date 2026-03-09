@@ -2,19 +2,12 @@ const fetch = require("node-fetch");
 
 const getBotApiUrl = () => `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 const TELEGRAM_TIMEOUT_MS = 8000;
-const sanitizeUrl = (url) => url.replace(/bot[^/]+/, "bot[redacted]");
-const sanitizeBody = (body) => ({
-  ...body,
-  provider_token: body?.provider_token ? "[redacted]" : body?.provider_token,
-});
 
 const postFetch = async ({ url, body }) => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), TELEGRAM_TIMEOUT_MS);
 
   try {
-    console.log("[TG API] request:", sanitizeUrl(url), JSON.stringify(sanitizeBody(body)));
-
     const response = await fetch(url, {
       method: "POST",
       body: JSON.stringify(body),
@@ -25,7 +18,6 @@ const postFetch = async ({ url, body }) => {
     });
 
     const rawText = await response.text();
-    console.log("[TG API] response:", sanitizeUrl(url), response.status, rawText);
 
     let data;
     try {

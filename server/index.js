@@ -10,6 +10,10 @@ const { PORT, PAYMENT_TOKEN, CLIENT_APP_URL, BOT_TOKEN } = process.env;
 const app = express();
 
 const productsData = require("./data/products.json");
+const formatAmount = (amount) => new Intl.NumberFormat("ru-RU", {
+  minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+  maximumFractionDigits: 2,
+}).format(amount);
 
 // Normalize URL for comparison (no trailing slash)
 const allowedOrigin = CLIENT_APP_URL ? CLIENT_APP_URL.replace(/\/$/, "") : null;
@@ -154,32 +158,14 @@ app.post("/", async (req, res) => {
 
     if (pre_checkout_query) {
       const { id: queryId } = pre_checkout_query;
-      const startedAt = Date.now();
 
       try {
-        const tgData = await answerPreCheckoutQuery({
+        await answerPreCheckoutQuery({
           pre_checkout_query_id: queryId,
           ok: true,
         });
-        console.log(
-          "[PCQ] completed:",
-          JSON.stringify({
-            queryId,
-            ok: true,
-            elapsedMs: Date.now() - startedAt,
-            telegram: tgData,
-          })
-        );
       } catch (pcqErr) {
-        console.error(
-          "[PCQ] failed:",
-          JSON.stringify({
-            queryId,
-            ok: false,
-            elapsedMs: Date.now() - startedAt,
-            error: pcqErr.message,
-          })
-        );
+        console.error("[PCQ] failed:", queryId, pcqErr.message);
       }
 
       return res.json({ success: true });
@@ -193,7 +179,7 @@ app.post("/", async (req, res) => {
         const thankYouText =
           `Спасибо за покупку! 🎉\n\n` +
           `Заказ: ${successful_payment.invoice_payload}\n` +
-          `Сумма: ${(successful_payment.total_amount / 100).toFixed(0)} ₽`;
+          `Сумма: ${formatAmount(successful_payment.total_amount / 100)} ₽`;
         await sendMessage({
           body: {
             chat_id: chat.id,
@@ -222,8 +208,7 @@ app.post("/", async (req, res) => {
         parse_mode: "Markdown",
       };
 
-      const response = await sendMessage({ body });
-      console.log({ response });
+      await sendMessage({ body });
     }
 
     return res.json({ success: true });
