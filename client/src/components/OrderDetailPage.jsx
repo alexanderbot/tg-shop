@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useOrders } from "../context/OrdersContext";
+import { useCart } from "../context/CartContext";
 import formatPrice from "../utils/formatPrice";
 
 const STATUS_CONFIG = {
@@ -21,6 +22,12 @@ const STATUS_CONFIG = {
     icon: "cancel",
     color: "#ef4444",
     bg: "rgba(239,68,68,0.10)",
+  },
+  cancelled: {
+    label: "Отменён",
+    icon: "block",
+    color: "#6b7280",
+    bg: "rgba(107,114,128,0.10)",
   },
 };
 
@@ -43,7 +50,8 @@ function formatDeliveryDate(dateStr) {
 
 export default function OrderDetailPage() {
   const { orderId } = useParams();
-  const { orders } = useOrders();
+  const { orders, cancelOrder, deleteOrder } = useOrders();
+  const { clearCart, addToCart } = useCart();
   const navigate = useNavigate();
 
   const order = orders.find((o) => String(o.id) === orderId);
@@ -58,6 +66,53 @@ export default function OrderDetailPage() {
       window.Telegram?.WebApp?.BackButton?.offClick(handleBack);
     };
   }, [navigate]);
+
+  const confirmAction = useCallback((message, onConfirm) => {
+    const tg = window.Telegram?.WebApp;
+    if (tg?.showConfirm) {
+      tg.showConfirm(message, (ok) => {
+        if (ok) onConfirm();
+      });
+    } else if (window.confirm(message)) {
+      onConfirm();
+    }
+  }, []);
+
+  const handleRepeat = useCallback(() => {
+    if (!order) return;
+    confirmAction("Повторить этот заказ? Товары будут добавлены в корзину.", () => {
+      clearCart();
+      order.items.forEach((item) => {
+        const product = {
+          id: item.productId,
+          title: item.title,
+          thumbnail: item.thumbnail,
+          price: item.price,
+          discountPercentage: 0,
+        };
+        addToCart(product, item.quantity);
+      });
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("medium");
+      navigate("/cart");
+    });
+  }, [order, confirmAction, clearCart, addToCart, navigate]);
+
+  const handleCancel = useCallback(() => {
+    if (!order || order.status !== "pending") return;
+    confirmAction("Отменить этот заказ? Его статус изменится на \"Отменён\".", () => {
+      cancelOrder(order.id);
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("warning");
+    });
+  }, [order, confirmAction, cancelOrder]);
+
+  const handleDelete = useCallback(() => {
+    if (!order) return;
+    confirmAction("Удалить этот заказ из истории? Это действие нельзя отменить.", () => {
+      deleteOrder(order.id);
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+      navigate("/orders");
+    });
+  }, [order, confirmAction, deleteOrder, navigate]);
 
   if (!order) {
     return (
@@ -190,6 +245,35 @@ export default function OrderDetailPage() {
           )}
         </div>
       )}
+
+      {/* Actions */}
+      <div className="px-4 mt-4 mb-6 space-y-2">
+        <button
+          onClick={handleRepeat}
+          className="w-full bg-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-text-color,#fff)] font-bold text-sm px-4 py-3 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1.5"
+        >
+          <span className="material-symbols-outlined text-[18px]">shopping_bag</span>
+          Повторить заказ
+        </button>
+
+        {order.status === "pending" && (
+          <button
+            onClick={handleCancel}
+            className="w-full border border-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-color,#f472b6)] font-bold text-sm px-4 py-3 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1.5 bg-[var(--tg-theme-bg-color,#fff)]"
+          >
+            <span className="material-symbols-outlined text-[18px]">cancel</span>
+            Отменить заказ
+          </button>
+        )}
+
+        <button
+          onClick={handleDelete}
+          className="w-full border border-[rgba(239,68,68,0.7)] text-[rgba(239,68,68,1)] font-bold text-sm px-4 py-3 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1.5 bg-[var(--tg-theme-bg-color,#fff)]"
+        >
+          <span className="material-symbols-outlined text-[18px]">delete</span>
+          Удалить из истории
+        </button>
+      </div>
     </div>
   );
 }

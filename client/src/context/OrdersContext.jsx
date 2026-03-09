@@ -78,9 +78,26 @@ export function OrdersProvider({ children }) {
     );
   }, []);
 
+  const cancelOrder = useCallback((orderId) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status: "cancelled" } : o))
+    );
+  }, []);
+
+  const deleteOrder = useCallback((orderId) => {
+    setOrders((prev) => prev.filter((o) => o.id !== orderId));
+  }, []);
+
   const value = useMemo(
-    () => ({ orders, addOrder, markOrderPaid, markOrderFailed }),
-    [orders, addOrder, markOrderPaid, markOrderFailed]
+    () => ({
+      orders,
+      addOrder,
+      markOrderPaid,
+      markOrderFailed,
+      cancelOrder,
+      deleteOrder,
+    }),
+    [orders, addOrder, markOrderPaid, markOrderFailed, cancelOrder, deleteOrder]
   );
 
   return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>;
