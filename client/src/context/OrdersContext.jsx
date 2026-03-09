@@ -20,18 +20,51 @@ export function OrdersProvider({ children }) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(orders));
   }, [orders]);
 
-  const addOrder = useCallback(({ items, totalPrice, status = "pending", delivery }) => {
+  const addOrder = useCallback(({ id, payload, items, totalPrice, status = "pending", delivery }) => {
+    const finalId = id || Date.now();
     const order = {
-      id: Date.now(),
+      id: finalId,
       date: new Date().toISOString(),
       items,
       totalPrice,
       status,
+      ...(payload && { payload }),
       ...(delivery && { delivery }),
     };
     setOrders((prev) => [order, ...prev]);
     return order;
   }, []);
+
+  // При каждом запуске приложения синхронизируем висящие pending‑заказы с сервером
+  useEffect(() => {
+    async function syncPending() {
+      const { getPaymentStatus } = await import("../API/payment");
+      setOrders((prev) => {
+        // сначала просто вернём prev, обновление сделаем после проверки
+        return prev;
+      });
+      const updated = [];
+      for (const order of orders) {
+        if (order.status !== "pending" || !order.payload) continue;
+        try {
+          const status = await getPaymentStatus(String(order.payload));
+          if (status === "paid") {
+            updated.push(order.id);
+          }
+        } catch {
+          // ignore network errors
+        }
+      }
+      if (updated.length) {
+        setOrders((prev) =>
+          prev.map((o) => (updated.includes(o.id) ? { ...o, status: "paid" } : o))
+        );
+      }
+    }
+    if (orders.length) {
+      syncPending();
+    }
+  }, [orders, setOrders]);
 
   const markOrderPaid = useCallback((orderId) => {
     setOrders((prev) =>

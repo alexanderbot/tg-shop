@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useOrders } from "../context/OrdersContext";
 import formatPrice from "../utils/formatPrice";
 
@@ -126,6 +126,7 @@ function OrderCard({ order, onClick }) {
 export default function OrdersPage() {
   const { orders } = useOrders();
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const handleBack = () => {
@@ -138,6 +139,18 @@ export default function OrdersPage() {
       window.Telegram?.WebApp?.BackButton?.offClick(handleBack);
     };
   }, [navigate]);
+
+  // Если открыли из кнопки "Открыть заказ" с payload в query — сразу переходим к этому заказу
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const payload = params.get("payload");
+    if (!payload || !orders.length) return;
+
+    const target = orders.find((o) => String(o.payload) === payload);
+    if (target) {
+      navigate(`/orders/${target.id}`, { replace: true });
+    }
+  }, [location.search, orders, navigate]);
 
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
 

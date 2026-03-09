@@ -247,7 +247,7 @@ app.post("/", async (req, res) => {
                     {
                       text: "Открыть заказ",
                       web_app: {
-                        url: `${appUrl}/orders`,
+                        url: `${appUrl}/orders?payload=${encodeURIComponent(payloadKey)}`,
                       },
                     },
                   ],

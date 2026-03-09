@@ -95,7 +95,14 @@ export default function CartPage() {
       window.Telegram?.WebApp?.MainButton?.enable?.();
 
       if (data.success && data.url) {
-        const order = addOrder({ items: cartItems, totalPrice, status: "pending", delivery });
+        const order = addOrder({
+          id: tempId,
+          payload: String(tempId),
+          items: cartItems,
+          totalPrice,
+          status: "pending",
+          delivery,
+        });
         const oid = order.id;
         const payloadStr = String(tempId);
         pendingOrderId.current = oid;
