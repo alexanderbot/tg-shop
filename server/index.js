@@ -154,19 +154,34 @@ app.post("/", async (req, res) => {
 
     if (pre_checkout_query) {
       const { id: queryId } = pre_checkout_query;
-      console.log("[PCQ] received:", queryId, "at", Date.now());
+      const startedAt = Date.now();
 
       try {
         const tgData = await answerPreCheckoutQuery({
           pre_checkout_query_id: queryId,
           ok: true,
         });
-        console.log("[PCQ] answer result:", JSON.stringify(tgData));
+        console.log(
+          "[PCQ] completed:",
+          JSON.stringify({
+            queryId,
+            ok: true,
+            elapsedMs: Date.now() - startedAt,
+            telegram: tgData,
+          })
+        );
       } catch (pcqErr) {
-        console.error("[PCQ] answer error:", pcqErr.message, pcqErr.stack);
+        console.error(
+          "[PCQ] failed:",
+          JSON.stringify({
+            queryId,
+            ok: false,
+            elapsedMs: Date.now() - startedAt,
+            error: pcqErr.message,
+          })
+        );
       }
 
-      console.log("[PCQ] done for:", queryId, "at", Date.now());
       return res.json({ success: true });
     }
 

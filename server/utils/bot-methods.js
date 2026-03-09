@@ -2,6 +2,7 @@ const fetch = require("node-fetch");
 
 const getBotApiUrl = () => `https://api.telegram.org/bot${process.env.BOT_TOKEN}`;
 const TELEGRAM_TIMEOUT_MS = 8000;
+const sanitizeUrl = (url) => url.replace(/bot[^/]+/, "bot[redacted]");
 const sanitizeBody = (body) => ({
   ...body,
   provider_token: body?.provider_token ? "[redacted]" : body?.provider_token,
@@ -12,7 +13,7 @@ const postFetch = async ({ url, body }) => {
   const timeoutId = setTimeout(() => controller.abort(), TELEGRAM_TIMEOUT_MS);
 
   try {
-    console.log("[TG API] request:", url, JSON.stringify(sanitizeBody(body)));
+    console.log("[TG API] request:", sanitizeUrl(url), JSON.stringify(sanitizeBody(body)));
 
     const response = await fetch(url, {
       method: "POST",
@@ -24,7 +25,7 @@ const postFetch = async ({ url, body }) => {
     });
 
     const rawText = await response.text();
-    console.log("[TG API] response:", response.status, rawText);
+    console.log("[TG API] response:", sanitizeUrl(url), response.status, rawText);
 
     let data;
     try {
@@ -38,6 +39,11 @@ const postFetch = async ({ url, body }) => {
     }
 
     return data;
+  } catch (error) {
+    const reason = error?.name === "AbortError"
+      ? `Telegram API timeout after ${TELEGRAM_TIMEOUT_MS}ms`
+      : error?.message || "Unknown Telegram API error";
+    throw new Error(reason);
   } finally {
     clearTimeout(timeoutId);
   }
