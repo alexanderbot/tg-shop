@@ -59,8 +59,9 @@ export default function CartPage() {
       } else {
         console.error("Invoice link failed:", data);
         window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+        const detail = data?.error || "Неизвестная ошибка";
         window.Telegram?.WebApp?.showAlert?.(
-          "Не удалось создать платёж. Попробуйте ещё раз."
+          `Не удалось создать платёж: ${detail}`
         );
       }
     } catch (err) {
@@ -69,7 +70,7 @@ export default function CartPage() {
       window.Telegram?.WebApp?.MainButton?.enable?.();
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
       window.Telegram?.WebApp?.showAlert?.(
-        "Ошибка при оплате. Проверьте соединение и попробуйте снова."
+        `Ошибка при оплате: ${err.message || "Проверьте соединение"}`
       );
       pendingOrderId.current = null;
     }
