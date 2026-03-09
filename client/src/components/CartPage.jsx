@@ -96,8 +96,12 @@ export default function CartPage() {
         const order = addOrder({ items: cartItems, totalPrice, status: "pending", delivery });
         const oid = order.id;
         pendingOrderId.current = oid;
+        let handled = false;
 
-        window.Telegram?.WebApp?.openInvoice(data.url, (invoiceStatus) => {
+        const applyInvoiceResult = (invoiceStatus) => {
+          if (handled) return;
+          handled = true;
+          console.log("[invoice] status:", invoiceStatus, "oid:", oid);
           if (invoiceStatus === "paid") {
             markOrderPaidRef.current(oid);
             clearCart();
@@ -106,6 +110,18 @@ export default function CartPage() {
             markOrderFailedRef.current(oid);
           }
           pendingOrderId.current = null;
+        };
+
+        const handleInvoiceClosed = (eventData) => {
+          const invoiceStatus = eventData?.status ?? eventData;
+          window.Telegram?.WebApp?.offEvent("invoiceClosed", handleInvoiceClosed);
+          applyInvoiceResult(invoiceStatus);
+        };
+        window.Telegram?.WebApp?.onEvent("invoiceClosed", handleInvoiceClosed);
+
+        window.Telegram?.WebApp?.openInvoice(data.url, (invoiceStatus) => {
+          window.Telegram?.WebApp?.offEvent("invoiceClosed", handleInvoiceClosed);
+          applyInvoiceResult(invoiceStatus);
         });
       } else {
         console.error("Invoice link failed:", data);
