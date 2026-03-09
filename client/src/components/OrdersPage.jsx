@@ -1,6 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useOrders } from "../context/OrdersContext";
+import { useCart } from "../context/CartContext";
 import formatPrice from "../utils/formatPrice";
 
 const STATUS_CONFIG = {
@@ -22,6 +23,12 @@ const STATUS_CONFIG = {
     color: "#ef4444",
     bg: "rgba(239,68,68,0.10)",
   },
+  cancelled: {
+    label: "Отменён",
+    icon: "block",
+    color: "#6b7280",
+    bg: "rgba(107,114,128,0.10)",
+  },
 };
 
 function formatDate(isoString) {
@@ -35,7 +42,7 @@ function formatDate(isoString) {
   });
 }
 
-function OrderCard({ order, onClick }) {
+function OrderCard({ order, onClick, onRepeat, onCancel, onDelete }) {
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const total = formatPrice(order.totalPrice);
   const itemsPreview = order.items.slice(0, 3);
@@ -119,12 +126,55 @@ function OrderCard({ order, onClick }) {
           </span>
         </div>
       </div>
+
+      {/* Actions */}
+      <div className="px-4 pt-2 pb-3 flex flex-col gap-1.5">
+        {onRepeat && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onRepeat();
+            }}
+            className="w-full bg-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-text-color,#fff)] font-bold text-[11px] px-3 py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1"
+          >
+            <span className="material-symbols-outlined text-[16px]">shopping_bag</span>
+            Повторить заказ
+          </button>
+        )}
+
+        {onCancel && order.status === "pending" && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancel();
+            }}
+            className="w-full border border-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-color,#f472b6)] font-bold text-[11px] px-3 py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1 bg-[var(--tg-theme-bg-color,#fff)]"
+          >
+            <span className="material-symbols-outlined text-[16px]">cancel</span>
+            Отменить заказ
+          </button>
+        )}
+
+        {onDelete && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="w-full border border-[rgba(239,68,68,0.7)] text-[rgba(239,68,68,1)] font-bold text-[11px] px-3 py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1 bg-[var(--tg-theme-bg-color,#fff)]"
+          >
+            <span className="material-symbols-outlined text-[16px]">delete</span>
+            Удалить из истории
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
 export default function OrdersPage() {
-  const { orders } = useOrders();
+  const { orders, cancelOrder, deleteOrder } = useOrders();
+  const { clearCart, addToCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -151,6 +201,61 @@ export default function OrdersPage() {
       navigate(`/orders/${target.id}`, { replace: true });
     }
   }, [location.search, orders, navigate]);
+
+  const confirmAction = useCallback((message, onConfirm) => {
+    const tg = window.Telegram?.WebApp;
+    if (tg?.showConfirm) {
+      tg.showConfirm(message, (ok) => {
+        if (ok) onConfirm();
+      });
+    } else if (window.confirm(message)) {
+      onConfirm();
+    }
+  }, []);
+
+  const handleRepeat = useCallback(
+    (order) => {
+      if (!order) return;
+      confirmAction("Повторить этот заказ? Товары будут добавлены в корзину.", () => {
+        clearCart();
+        order.items.forEach((item) => {
+          const product = {
+            id: item.productId,
+            title: item.title,
+            thumbnail: item.thumbnail,
+            price: item.price,
+            discountPercentage: 0,
+          };
+          addToCart(product, item.quantity);
+        });
+        window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("medium");
+        navigate("/cart");
+      });
+    },
+    [confirmAction, clearCart, addToCart, navigate]
+  );
+
+  const handleCancel = useCallback(
+    (order) => {
+      if (!order || order.status !== "pending") return;
+      confirmAction('Отменить этот заказ? Его статус изменится на "Отменён".', () => {
+        cancelOrder(order.id);
+        window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("warning");
+      });
+    },
+    [confirmAction, cancelOrder]
+  );
+
+  const handleDelete = useCallback(
+    (order) => {
+      if (!order) return;
+      confirmAction("Удалить этот заказ из истории? Это действие нельзя отменить.", () => {
+        deleteOrder(order.id);
+        window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+      });
+    },
+    [confirmAction, deleteOrder]
+  );
 
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
 
@@ -216,7 +321,13 @@ export default function OrdersPage() {
         <div className="px-3 space-y-3">
           {orders.map((order, idx) => (
             <div key={order.id} style={{ animationDelay: `${idx * 0.04}s` }}>
-              <OrderCard order={order} onClick={() => navigate(`/orders/${order.id}`)} />
+              <OrderCard
+                order={order}
+                onClick={() => navigate(`/orders/${order.id}`)}
+                onRepeat={() => handleRepeat(order)}
+                onCancel={order.status === "pending" ? () => handleCancel(order) : undefined}
+                onDelete={() => handleDelete(order)}
+              />
             </div>
           ))}
         </div>
