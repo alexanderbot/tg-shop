@@ -35,7 +35,7 @@ function formatDate(isoString) {
   });
 }
 
-function OrderCard({ order }) {
+function OrderCard({ order, onClick }) {
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const total = formatPrice(order.totalPrice);
   const itemsPreview = order.items.slice(0, 3);
@@ -43,7 +43,8 @@ function OrderCard({ order }) {
 
   return (
     <div
-      className="rounded-2xl overflow-hidden card-shadow animate-fade-in-up"
+      onClick={onClick}
+      className="rounded-2xl overflow-hidden card-shadow animate-fade-in-up cursor-pointer active:scale-[0.98] transition-transform"
       style={{ background: "var(--tg-theme-secondary-bg-color,#f9fafb)" }}
     >
       {/* Header row */}
@@ -111,7 +112,12 @@ function OrderCard({ order }) {
         style={{ borderColor: "var(--tg-theme-bg-color,#eee)" }}
       >
         <span className="text-[12px] text-[var(--tg-theme-hint-color,#999)]">Итого</span>
-        <span className="text-[16px] font-extrabold">{total}</span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[16px] font-extrabold">{total}</span>
+          <span className="material-symbols-outlined text-[18px] text-[var(--tg-theme-hint-color,#bbb)]">
+            chevron_right
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -197,7 +203,7 @@ export default function OrdersPage() {
         <div className="px-3 space-y-3">
           {orders.map((order, idx) => (
             <div key={order.id} style={{ animationDelay: `${idx * 0.04}s` }}>
-              <OrderCard order={order} />
+              <OrderCard order={order} onClick={() => navigate(`/orders/${order.id}`)} />
             </div>
           ))}
         </div>

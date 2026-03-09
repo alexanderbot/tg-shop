@@ -25,6 +25,10 @@ export default function CartPage() {
   const [recipientPhone, setRecipientPhone] = useState("");
 
   const deliveryRef = useRef(null);
+  const markOrderPaidRef = useRef(markOrderPaid);
+  const markOrderFailedRef = useRef(markOrderFailed);
+  markOrderPaidRef.current = markOrderPaid;
+  markOrderFailedRef.current = markOrderFailed;
 
   const deliveryData = {
     method: deliveryMethod,
@@ -90,15 +94,16 @@ export default function CartPage() {
 
       if (data.success && data.url) {
         const order = addOrder({ items: cartItems, totalPrice, status: "pending", delivery });
-        pendingOrderId.current = order.id;
+        const oid = order.id;
+        pendingOrderId.current = oid;
 
-        window.Telegram?.WebApp?.openInvoice(data.url, (status) => {
-          if (status === "paid") {
-            if (pendingOrderId.current) markOrderPaid(pendingOrderId.current);
+        window.Telegram?.WebApp?.openInvoice(data.url, (invoiceStatus) => {
+          if (invoiceStatus === "paid") {
+            markOrderPaidRef.current(oid);
             clearCart();
             window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
-          } else if (status === "cancelled" || status === "failed") {
-            if (pendingOrderId.current) markOrderFailed(pendingOrderId.current);
+          } else if (invoiceStatus === "cancelled" || invoiceStatus === "failed") {
+            markOrderFailedRef.current(oid);
           }
           pendingOrderId.current = null;
         });
@@ -120,7 +125,7 @@ export default function CartPage() {
       );
       pendingOrderId.current = null;
     }
-  }, [items, totalPrice, clearCart, addOrder, markOrderPaid, markOrderFailed]);
+  }, [items, totalPrice, clearCart, addOrder]);
 
   useEffect(() => {
     if (items.length > 0) {
@@ -229,36 +234,41 @@ export default function CartPage() {
         <div className="mx-3 mt-3 p-4 rounded-2xl bg-[var(--tg-theme-secondary-bg-color,#f9fafb)] card-shadow">
           <h2 className="text-[15px] font-bold mb-3">Доставка</h2>
 
-          <div className="flex gap-3 mb-3">
-            <div className="flex-1">
-              <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
-                Дата доставки
-              </label>
-              <input
-                type="date"
-                value={deliveryDate}
-                onChange={(e) => setDeliveryDate(e.target.value)}
-                className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
-              />
-            </div>
-            <div className="flex-1">
-              <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
-                Интервал доставки 1 час
-              </label>
-              <div className="flex gap-2 items-center">
+          <div className="mb-3">
+            <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
+              Дата доставки
+            </label>
+            <input
+              type="date"
+              value={deliveryDate}
+              onChange={(e) => setDeliveryDate(e.target.value)}
+              className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+            />
+          </div>
+
+          <div className="mb-3">
+            <label className="text-xs text-[var(--tg-theme-hint-color,#999)] mb-1 block font-semibold">
+              Интервал доставки (1 час)
+            </label>
+            <div className="flex gap-2 items-center">
+              <div className="flex-1 relative">
                 <input
                   type="time"
                   value={deliveryTimeFrom}
                   onChange={(e) => setDeliveryTimeFrom(e.target.value)}
-                  placeholder="с __:__"
-                  className="flex-1 p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+                  className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
                 />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[11px] text-[var(--tg-theme-hint-color,#999)] pointer-events-none" style={{ display: deliveryTimeFrom ? "none" : undefined }}>
+                  с
+                </span>
+              </div>
+              <span className="text-xs text-[var(--tg-theme-hint-color,#999)] shrink-0">до</span>
+              <div className="flex-1 relative">
                 <input
                   type="time"
                   value={deliveryTimeTo}
                   onChange={(e) => setDeliveryTimeTo(e.target.value)}
-                  placeholder="до __:__"
-                  className="flex-1 p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
+                  className="w-full p-3 rounded-xl border border-[var(--tg-theme-secondary-bg-color,#eee)] bg-[var(--tg-theme-bg-color,#fff)] text-sm outline-none"
                 />
               </div>
             </div>

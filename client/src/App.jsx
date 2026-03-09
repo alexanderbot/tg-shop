@@ -5,6 +5,7 @@ import CatalogPage from "./components/CatalogPage";
 import ProductPage from "./components/ProductPage";
 import CartPage from "./components/CartPage";
 import OrdersPage from "./components/OrdersPage";
+import OrderDetailPage from "./components/OrderDetailPage";
 import BottomNav from "./components/BottomNav";
 import "./index.css";
 
@@ -48,6 +49,7 @@ export function App() {
               <Route path="/product/:productId" element={<ProductPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/orders" element={<OrdersPage />} />
+              <Route path="/orders/:orderId" element={<OrderDetailPage />} />
             </Routes>
             <BottomNav />
           </div>
