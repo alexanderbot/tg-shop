@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useOrders } from "../context/OrdersContext";
 import { useCart } from "../context/CartContext";
 import formatPrice from "../utils/formatPrice";
+import { getInvoiceLink, getPaymentStatus } from "../API/payment";
 
 const STATUS_CONFIG = {
   paid: {
@@ -50,7 +51,7 @@ function formatDeliveryDate(dateStr) {
 
 export default function OrderDetailPage() {
   const { orderId } = useParams();
-  const { orders, cancelOrder, deleteOrder } = useOrders();
+  const { orders, cancelOrder, deleteOrder, markOrderPaid, markOrderFailed } = useOrders();
   const { clearCart, addToCart } = useCart();
   const navigate = useNavigate();
 
@@ -114,6 +115,95 @@ export default function OrderDetailPage() {
     });
   }, [order, confirmAction, deleteOrder, navigate]);
 
+  const handlePay = useCallback(async () => {
+    const currentOrder = order;
+    if (!currentOrder || (!currentOrder.payload && !currentOrder.id)) return;
+    if (currentOrder.status === "paid" || currentOrder.status === "cancelled") return;
+
+    const tg = window.Telegram?.WebApp;
+    try {
+      tg?.HapticFeedback?.impactOccurred("heavy");
+
+      const desc = currentOrder.items
+        .map((c) => `${c.title} x${c.quantity}`)
+        .join(", ");
+
+      const body = {
+        title: "Заказ из магазина",
+        description: desc.length > 255 ? desc.slice(0, 252) + "..." : desc,
+        items: currentOrder.items,
+        amount: Math.round(currentOrder.totalPrice * 100) / 100,
+        payload: String(currentOrder.payload || currentOrder.id),
+        delivery: currentOrder.delivery,
+      };
+
+      const data = await getInvoiceLink({ body });
+
+      if (!data.success || !data.url) {
+        console.error("Invoice link failed:", data);
+        tg?.HapticFeedback?.notificationOccurred("error");
+        const detail = data?.error || "Неизвестная ошибка";
+        tg?.showAlert?.(`Не удалось открыть платёж: ${detail}`);
+        return;
+      }
+
+      const payloadStr = String(currentOrder.payload || currentOrder.id);
+      let handled = false;
+      let pollTimer = null;
+
+      const applyInvoiceResult = (invoiceStatus) => {
+        if (handled) return;
+
+        if (invoiceStatus === "paid") {
+          handled = true;
+          if (pollTimer) clearInterval(pollTimer);
+          markOrderPaid(currentOrder.id);
+          tg?.HapticFeedback?.notificationOccurred("success");
+        } else if (invoiceStatus === "cancelled" || invoiceStatus === "failed") {
+          handled = true;
+          if (pollTimer) clearInterval(pollTimer);
+          markOrderFailed(currentOrder.id);
+        }
+      };
+
+      // Polling: проверяем статус на сервере каждые 2 сек (до 60 сек)
+      let pollCount = 0;
+      pollTimer = setInterval(async () => {
+        pollCount++;
+        if (pollCount > 30) {
+          clearInterval(pollTimer);
+          return;
+        }
+        try {
+          const status = await getPaymentStatus(payloadStr);
+          if (status === "paid") applyInvoiceResult("paid");
+        } catch {
+          // ignore network errors during polling
+        }
+      }, 2000);
+
+      const handleInvoiceClosed = (eventData) => {
+        const invoiceStatus = eventData?.status ?? eventData;
+        tg?.offEvent("invoiceClosed", handleInvoiceClosed);
+        applyInvoiceResult(invoiceStatus);
+      };
+
+      tg?.onEvent("invoiceClosed", handleInvoiceClosed);
+
+      tg?.openInvoice(data.url, (invoiceStatus) => {
+        tg?.offEvent("invoiceClosed", handleInvoiceClosed);
+        applyInvoiceResult(invoiceStatus);
+      });
+    } catch (err) {
+      console.error("Payment error:", err);
+      const tg = window.Telegram?.WebApp;
+      tg?.HapticFeedback?.notificationOccurred("error");
+      tg?.showAlert?.(
+        `Ошибка при оплате: ${err.message || "Проверьте соединение"}`
+      );
+    }
+  }, [order, markOrderPaid, markOrderFailed]);
+
   if (!order) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] text-center px-6 pb-nav">
@@ -150,14 +240,22 @@ export default function OrderDetailPage() {
               {formatDate(order.date)}
             </p>
           </div>
-          <div
-            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-bold shrink-0"
-            style={{ background: cfg.bg, color: cfg.color }}
-          >
-            <span className="material-symbols-outlined text-[16px]" style={{ color: cfg.color }}>
-              {cfg.icon}
-            </span>
-            {cfg.label}
+          <div className="flex items-center gap-1.5">
+            <div
+              className="flex items-center gap-1 px-3 py-1.5 rounded-full text-[12px] font-bold shrink-0"
+              style={{ background: cfg.bg, color: cfg.color }}
+            >
+              <span className="material-symbols-outlined text-[16px]" style={{ color: cfg.color }}>
+                {cfg.icon}
+              </span>
+              {cfg.label}
+            </div>
+            <button
+              onClick={handleDelete}
+              className="w-8 h-8 flex items-center justify-center rounded-full text-[var(--tg-theme-hint-color,#999)] active:bg-[rgba(0,0,0,0.05)] transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+            </button>
           </div>
         </div>
       </div>
@@ -247,7 +345,17 @@ export default function OrderDetailPage() {
       )}
 
       {/* Actions */}
-      <div className="px-4 mt-4 mb-6 space-y-2">
+      <div className="px-4 mt-4 mb-6 flex flex-col gap-2">
+        {(order.status === "pending" || order.status === "failed") && (
+          <button
+            onClick={handlePay}
+            className="w-full border border-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-color,#f472b6)] font-bold text-sm px-4 py-3 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1.5 bg-[var(--tg-theme-bg-color,#fff)]"
+          >
+            <span className="material-symbols-outlined text-[18px]">payments</span>
+            Оплатить заказ
+          </button>
+        )}
+
         <button
           onClick={handleRepeat}
           className="w-full bg-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-text-color,#fff)] font-bold text-sm px-4 py-3 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1.5"
@@ -265,14 +373,6 @@ export default function OrderDetailPage() {
             Отменить заказ
           </button>
         )}
-
-        <button
-          onClick={handleDelete}
-          className="w-full border border-[rgba(239,68,68,0.7)] text-[rgba(239,68,68,1)] font-bold text-sm px-4 py-3 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1.5 bg-[var(--tg-theme-bg-color,#fff)]"
-        >
-          <span className="material-symbols-outlined text-[18px]">delete</span>
-          Удалить из истории
-        </button>
       </div>
     </div>
   );

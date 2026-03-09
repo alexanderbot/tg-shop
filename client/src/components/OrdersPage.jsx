@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useOrders } from "../context/OrdersContext";
 import { useCart } from "../context/CartContext";
 import formatPrice from "../utils/formatPrice";
+import { getInvoiceLink, getPaymentStatus } from "../API/payment";
 
 const STATUS_CONFIG = {
   paid: {
@@ -42,7 +43,7 @@ function formatDate(isoString) {
   });
 }
 
-function OrderCard({ order, onClick, onRepeat, onCancel, onDelete }) {
+function OrderCard({ order, onClick, onRepeat, onCancel, onDelete, onPay }) {
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending;
   const total = formatPrice(order.totalPrice);
   const itemsPreview = order.items.slice(0, 3);
@@ -64,14 +65,27 @@ function OrderCard({ order, onClick, onRepeat, onCancel, onDelete }) {
             Заказ №{order.id.toString().slice(-6)}
           </p>
         </div>
-        <div
-          className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold"
-          style={{ background: cfg.bg, color: cfg.color }}
-        >
-          <span className="material-symbols-outlined text-[14px]" style={{ color: cfg.color }}>
-            {cfg.icon}
-          </span>
-          {cfg.label}
+        <div className="flex items-center gap-1.5">
+          <div
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold"
+            style={{ background: cfg.bg, color: cfg.color }}
+          >
+            <span className="material-symbols-outlined text-[14px]" style={{ color: cfg.color }}>
+              {cfg.icon}
+            </span>
+            {cfg.label}
+          </div>
+          {onDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="w-7 h-7 flex items-center justify-center rounded-full text-[var(--tg-theme-hint-color,#999)] active:bg-[rgba(0,0,0,0.05)] transition-colors"
+            >
+              <span className="material-symbols-outlined text-[18px]">delete</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -128,17 +142,30 @@ function OrderCard({ order, onClick, onRepeat, onCancel, onDelete }) {
       </div>
 
       {/* Actions */}
-      <div className="px-4 pt-2 pb-3 flex flex-col gap-1.5">
+      <div className="px-4 pt-2 pb-3 flex flex-wrap gap-1.5">
+        {onPay && (order.status === "pending" || order.status === "failed") && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onPay();
+            }}
+            className="flex-1 min-w-[0] border border-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-color,#f472b6)] font-bold text-[11px] px-3 py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1 bg-[var(--tg-theme-bg-color,#fff)]"
+          >
+            <span className="material-symbols-outlined text-[16px]">payments</span>
+            Оплатить
+          </button>
+        )}
+
         {onRepeat && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onRepeat();
             }}
-            className="w-full bg-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-text-color,#fff)] font-bold text-[11px] px-3 py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1"
+            className="flex-1 min-w-[0] bg-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-text-color,#fff)] font-bold text-[11px] px-3 py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1"
           >
             <span className="material-symbols-outlined text-[16px]">shopping_bag</span>
-            Повторить заказ
+            Повторить
           </button>
         )}
 
@@ -148,23 +175,10 @@ function OrderCard({ order, onClick, onRepeat, onCancel, onDelete }) {
               e.stopPropagation();
               onCancel();
             }}
-            className="w-full border border-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-color,#f472b6)] font-bold text-[11px] px-3 py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1 bg-[var(--tg-theme-bg-color,#fff)]"
+            className="flex-1 min-w-[0] border border-[var(--tg-theme-button-color,#f472b6)] text-[var(--tg-theme-button-color,#f472b6)] font-bold text-[11px] px-3 py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1 bg-[var(--tg-theme-bg-color,#fff)]"
           >
             <span className="material-symbols-outlined text-[16px]">cancel</span>
-            Отменить заказ
-          </button>
-        )}
-
-        {onDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete();
-            }}
-            className="w-full border border-[rgba(239,68,68,0.7)] text-[rgba(239,68,68,1)] font-bold text-[11px] px-3 py-2 rounded-xl active:scale-95 transition-transform flex items-center justify-center gap-1 bg-[var(--tg-theme-bg-color,#fff)]"
-          >
-            <span className="material-symbols-outlined text-[16px]">delete</span>
-            Удалить из истории
+            Отменить
           </button>
         )}
       </div>
@@ -173,7 +187,7 @@ function OrderCard({ order, onClick, onRepeat, onCancel, onDelete }) {
 }
 
 export default function OrdersPage() {
-  const { orders, cancelOrder, deleteOrder } = useOrders();
+  const { orders, cancelOrder, deleteOrder, markOrderPaid, markOrderFailed } = useOrders();
   const { clearCart, addToCart } = useCart();
   const navigate = useNavigate();
   const location = useLocation();
@@ -257,6 +271,97 @@ export default function OrdersPage() {
     [confirmAction, deleteOrder]
   );
 
+  const handlePay = useCallback(
+    (order) => {
+      if (!order || (!order.payload && !order.id)) return;
+      confirmAction("Открыть оплату для этого заказа?", async () => {
+        const tg = window.Telegram?.WebApp;
+        try {
+          tg?.HapticFeedback?.impactOccurred("heavy");
+
+          const desc = order.items
+            .map((c) => `${c.title} x${c.quantity}`)
+            .join(", ");
+
+          const body = {
+            title: "Заказ из магазина",
+            description: desc.length > 255 ? desc.slice(0, 252) + "..." : desc,
+            items: order.items,
+            amount: Math.round(order.totalPrice * 100) / 100,
+            payload: String(order.payload || order.id),
+            delivery: order.delivery,
+          };
+
+          const data = await getInvoiceLink({ body });
+
+          if (!data.success || !data.url) {
+            console.error("Invoice link failed:", data);
+            tg?.HapticFeedback?.notificationOccurred("error");
+            const detail = data?.error || "Неизвестная ошибка";
+            tg?.showAlert?.(`Не удалось открыть платёж: ${detail}`);
+            return;
+          }
+
+          const payloadStr = String(order.payload || order.id);
+          let handled = false;
+          let pollTimer = null;
+
+          const applyInvoiceResult = (invoiceStatus) => {
+            if (handled) return;
+
+            if (invoiceStatus === "paid") {
+              handled = true;
+              if (pollTimer) clearInterval(pollTimer);
+              markOrderPaid(order.id);
+              tg?.HapticFeedback?.notificationOccurred("success");
+            } else if (invoiceStatus === "cancelled" || invoiceStatus === "failed") {
+              handled = true;
+              if (pollTimer) clearInterval(pollTimer);
+              markOrderFailed(order.id);
+            }
+          };
+
+          // Polling: проверяем статус на сервере каждые 2 сек (до 60 сек)
+          let pollCount = 0;
+          pollTimer = setInterval(async () => {
+            pollCount++;
+            if (pollCount > 30) {
+              clearInterval(pollTimer);
+              return;
+            }
+            try {
+              const status = await getPaymentStatus(payloadStr);
+              if (status === "paid") applyInvoiceResult("paid");
+            } catch {
+              // ignore network errors during polling
+            }
+          }, 2000);
+
+          const handleInvoiceClosed = (eventData) => {
+            const invoiceStatus = eventData?.status ?? eventData;
+            tg?.offEvent("invoiceClosed", handleInvoiceClosed);
+            applyInvoiceResult(invoiceStatus);
+          };
+
+          tg?.onEvent("invoiceClosed", handleInvoiceClosed);
+
+          tg?.openInvoice(data.url, (invoiceStatus) => {
+            tg?.offEvent("invoiceClosed", handleInvoiceClosed);
+            applyInvoiceResult(invoiceStatus);
+          });
+        } catch (err) {
+          console.error("Payment error:", err);
+          const tg = window.Telegram?.WebApp;
+          tg?.HapticFeedback?.notificationOccurred("error");
+          tg?.showAlert?.(
+            `Ошибка при оплате: ${err.message || "Проверьте соединение"}`
+          );
+        }
+      });
+    },
+    [confirmAction, markOrderPaid, markOrderFailed]
+  );
+
   const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
 
   return (
@@ -327,6 +432,7 @@ export default function OrdersPage() {
                 onRepeat={() => handleRepeat(order)}
                 onCancel={order.status === "pending" ? () => handleCancel(order) : undefined}
                 onDelete={() => handleDelete(order)}
+                onPay={(order.status === "pending" || order.status === "failed") ? () => handlePay(order) : undefined}
               />
             </div>
           ))}
