@@ -28,12 +28,13 @@ export default function CartPage() {
     }));
 
     const tempId = Date.now();
+    const desc = cartItems.map((c) => `${c.title} x${c.quantity}`).join(", ");
     const body = {
       title: "Заказ из магазина",
-      description: cartItems.map((c) => `${c.title} x${c.quantity}`).join(", "),
+      description: desc.length > 255 ? desc.slice(0, 252) + "..." : desc,
       items: cartItems,
       amount: Math.round(totalPrice * 100) / 100,
-      payload: JSON.stringify({ orderId: tempId, items: cartItems }),
+      payload: String(tempId),
     };
 
     try {

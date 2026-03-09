@@ -116,10 +116,20 @@ app.post("/invoice-link", async (req, res) => {
       ];
     }
 
+    let description = reqBody.description || "Оплата заказа";
+    if (description.length > 255) {
+      description = description.slice(0, 252) + "...";
+    }
+
+    let payload = reqBody.payload || "data";
+    if (payload.length > 128) {
+      payload = payload.slice(0, 128);
+    }
+
     const body = {
       title: reqBody.title || "Заказ",
-      description: reqBody.description || "Оплата заказа",
-      payload: reqBody.payload || "data",
+      description,
+      payload,
       provider_token: PAYMENT_TOKEN,
       currency: "RUB",
       prices,
