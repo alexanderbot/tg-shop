@@ -238,11 +238,29 @@ app.post("/", async (req, res) => {
           }
         }
 
+        const appUrl = CLIENT_APP_URL ? CLIENT_APP_URL.replace(/\/$/, "") : null;
+        const replyMarkup =
+          appUrl
+            ? {
+                inline_keyboard: [
+                  [
+                    {
+                      text: "Открыть заказ",
+                      web_app: {
+                        url: `${appUrl}/orders`,
+                      },
+                    },
+                  ],
+                ],
+              }
+            : undefined;
+
         await sendMessage({
           body: {
             chat_id: chat.id,
             text: thankYouText,
             parse_mode: "Markdown",
+            ...(replyMarkup && { reply_markup: replyMarkup }),
           },
         });
         return res.json({ success: true });
