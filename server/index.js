@@ -1,9 +1,12 @@
 const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const nodeFetch = require("node-fetch");
 const { createInvoiceLink, sendMessage, answerPreCheckoutQuery } = require("./utils/bot-methods");
 const { validateInitData } = require("./utils/validateInitData");
 const { getWelcomeMessage } = require("./const/messages");
+
+const _fetch = typeof globalThis.fetch === "function" ? globalThis.fetch : nodeFetch;
 
 dotenv.config();
 
@@ -32,7 +35,7 @@ app.use(
 );
 
 app.get("/", (req, res) => {
-  res.json({ ok: true, message: "TGCart backend. Use Mini App in Telegram." });
+  res.json({ ok: true, message: "TGCart backend. Use Mini App in Telegram.", version: "2.1" });
 });
 
 app.get("/products/categories", (req, res) => {
@@ -151,21 +154,27 @@ app.post("/invoice-link", async (req, res) => {
 
 app.post("/", async (req, res) => {
   try {
-    console.log("webhook event", req.body);
     const { message, pre_checkout_query } = req.body;
 
     if (pre_checkout_query) {
-      const { id: pre_checkout_query_id } = pre_checkout_query;
-      console.log("[PCQ] answering pre_checkout_query_id:", pre_checkout_query_id);
+      const { id: queryId } = pre_checkout_query;
+      console.log("[PCQ] received:", queryId);
+
+      const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerPreCheckoutQuery`;
+      const pcoBody = JSON.stringify({ pre_checkout_query_id: queryId, ok: true });
+
       try {
-        const pcoResult = await answerPreCheckoutQuery({
-          pre_checkout_query_id,
-          ok: true,
+        const tgRes = await _fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: pcoBody,
         });
-        console.log("[PCQ] result:", JSON.stringify(pcoResult));
-      } catch (pcoErr) {
-        console.error("[PCQ] error:", pcoErr.message || pcoErr);
+        const tgData = await tgRes.json();
+        console.log("[PCQ] telegram response:", JSON.stringify(tgData));
+      } catch (fetchErr) {
+        console.error("[PCQ] fetch error:", fetchErr.message);
       }
+
       return res.json({ success: true });
     }
 
