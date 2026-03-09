@@ -13,11 +13,16 @@ const productsData = require("./data/products.json");
 
 // Temporary in-memory store: payload → delivery info (cleared after payment or 24h)
 const pendingDeliveries = new Map();
+// Confirmed paid payloads: payload → timestamp
+const paidPayloads = new Map();
 const DELIVERY_TTL_MS = 24 * 60 * 60 * 1000;
 function cleanupDeliveries() {
   const now = Date.now();
   for (const [key, entry] of pendingDeliveries) {
     if (now - entry.createdAt > DELIVERY_TTL_MS) pendingDeliveries.delete(key);
+  }
+  for (const [key, ts] of paidPayloads) {
+    if (now - ts > DELIVERY_TTL_MS) paidPayloads.delete(key);
   }
 }
 setInterval(cleanupDeliveries, 60 * 60 * 1000);
@@ -105,6 +110,17 @@ app.get("/products/:id", (req, res) => {
     console.error(err);
     return res.status(500).json({ error: "Failed to fetch product" });
   }
+});
+
+app.get("/payment-status/:payload", (req, res) => {
+  const { payload } = req.params;
+  if (paidPayloads.has(payload)) {
+    return res.json({ status: "paid" });
+  }
+  if (pendingDeliveries.has(payload)) {
+    return res.json({ status: "pending" });
+  }
+  return res.json({ status: "unknown" });
 });
 
 app.post("/invoice-link", async (req, res) => {
@@ -198,6 +214,7 @@ app.post("/", async (req, res) => {
         const payloadKey = successful_payment.invoice_payload;
         const pending = pendingDeliveries.get(payloadKey);
         pendingDeliveries.delete(payloadKey);
+        paidPayloads.set(payloadKey, Date.now());
 
         let thankYouText =
           `Спасибо за покупку! 🎉\n\n` +

@@ -13,3 +13,9 @@ export const getInvoiceLink = async ({ body }) => {
   const data = await response.json();
   return data;
 };
+
+export const getPaymentStatus = async (payload) => {
+  const response = await fetch(`${BACKEND_URL}/payment-status/${payload}`);
+  const data = await response.json();
+  return data.status;
+};

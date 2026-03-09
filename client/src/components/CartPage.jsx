@@ -2,7 +2,7 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { useOrders } from "../context/OrdersContext";
-import { getInvoiceLink } from "../API/payment";
+import { getInvoiceLink, getPaymentStatus } from "../API/payment";
 import getFinalPrice from "../utils/getFinalPrice";
 import formatPrice from "../utils/formatPrice";
 
@@ -27,8 +27,10 @@ export default function CartPage() {
   const deliveryRef = useRef(null);
   const markOrderPaidRef = useRef(markOrderPaid);
   const markOrderFailedRef = useRef(markOrderFailed);
+  const navigateRef = useRef(navigate);
   markOrderPaidRef.current = markOrderPaid;
   markOrderFailedRef.current = markOrderFailed;
+  navigateRef.current = navigate;
 
   const deliveryData = {
     method: deliveryMethod,
@@ -95,22 +97,41 @@ export default function CartPage() {
       if (data.success && data.url) {
         const order = addOrder({ items: cartItems, totalPrice, status: "pending", delivery });
         const oid = order.id;
+        const payloadStr = String(tempId);
         pendingOrderId.current = oid;
         let handled = false;
+        let pollTimer = null;
 
         const applyInvoiceResult = (invoiceStatus) => {
           if (handled) return;
           handled = true;
-          console.log("[invoice] status:", invoiceStatus, "oid:", oid);
+          if (pollTimer) clearInterval(pollTimer);
           if (invoiceStatus === "paid") {
             markOrderPaidRef.current(oid);
             clearCart();
             window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+            navigateRef.current(`/orders/${oid}`);
           } else if (invoiceStatus === "cancelled" || invoiceStatus === "failed") {
             markOrderFailedRef.current(oid);
           }
           pendingOrderId.current = null;
         };
+
+        // Polling fallback: проверяем статус на сервере каждые 2 сек (до 60 сек)
+        let pollCount = 0;
+        pollTimer = setInterval(async () => {
+          pollCount++;
+          if (pollCount > 30) {
+            clearInterval(pollTimer);
+            return;
+          }
+          try {
+            const status = await getPaymentStatus(payloadStr);
+            if (status === "paid") applyInvoiceResult("paid");
+          } catch {
+            // ignore network errors during polling
+          }
+        }, 2000);
 
         const handleInvoiceClosed = (eventData) => {
           const invoiceStatus = eventData?.status ?? eventData;
