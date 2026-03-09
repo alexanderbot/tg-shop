@@ -111,17 +111,23 @@ export default function CartPage() {
 
         const applyInvoiceResult = (invoiceStatus) => {
           if (handled) return;
-          handled = true;
-          if (pollTimer) clearInterval(pollTimer);
+
+          // Финализируем только при явном результате, игнорируем промежуточные/неизвестные статусы
           if (invoiceStatus === "paid") {
+            handled = true;
+            if (pollTimer) clearInterval(pollTimer);
             markOrderPaidRef.current(oid);
             clearCart();
             window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
             navigateRef.current(`/orders/${oid}`);
+            pendingOrderId.current = null;
           } else if (invoiceStatus === "cancelled" || invoiceStatus === "failed") {
+            handled = true;
+            if (pollTimer) clearInterval(pollTimer);
             markOrderFailedRef.current(oid);
+            pendingOrderId.current = null;
           }
-          pendingOrderId.current = null;
+          // Для статусов вроде "pending" ничего не делаем — ждём опроса / окончательного статуса
         };
 
         // Polling fallback: проверяем статус на сервере каждые 2 сек (до 60 сек)
