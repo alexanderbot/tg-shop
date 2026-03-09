@@ -1,14 +1,10 @@
 const express = require("express");
 const dotenv = require("dotenv");
+dotenv.config();
 const cors = require("cors");
-const nodeFetch = require("node-fetch");
 const { createInvoiceLink, sendMessage, answerPreCheckoutQuery } = require("./utils/bot-methods");
 const { validateInitData } = require("./utils/validateInitData");
 const { getWelcomeMessage } = require("./const/messages");
-
-const _fetch = typeof globalThis.fetch === "function" ? globalThis.fetch : nodeFetch;
-
-dotenv.config();
 
 const { PORT, PAYMENT_TOKEN, CLIENT_APP_URL, BOT_TOKEN } = process.env;
 const app = express();
@@ -158,23 +154,19 @@ app.post("/", async (req, res) => {
 
     if (pre_checkout_query) {
       const { id: queryId } = pre_checkout_query;
-      console.log("[PCQ] received:", queryId);
-
-      const url = `https://api.telegram.org/bot${BOT_TOKEN}/answerPreCheckoutQuery`;
-      const pcoBody = JSON.stringify({ pre_checkout_query_id: queryId, ok: true });
+      console.log("[PCQ] received:", queryId, "at", Date.now());
 
       try {
-        const tgRes = await _fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: pcoBody,
+        const tgData = await answerPreCheckoutQuery({
+          pre_checkout_query_id: queryId,
+          ok: true,
         });
-        const tgData = await tgRes.json();
-        console.log("[PCQ] telegram response:", JSON.stringify(tgData));
-      } catch (fetchErr) {
-        console.error("[PCQ] fetch error:", fetchErr.message);
+        console.log("[PCQ] answer result:", JSON.stringify(tgData));
+      } catch (pcqErr) {
+        console.error("[PCQ] answer error:", pcqErr.message, pcqErr.stack);
       }
 
+      console.log("[PCQ] done for:", queryId, "at", Date.now());
       return res.json({ success: true });
     }
 
